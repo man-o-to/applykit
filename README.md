@@ -68,7 +68,7 @@ AUTH_MODE=password  # single-owner protected mode
 
 Protected mode secures the whole installation and every career profile with one owner password. It does not create separate accounts for individual profiles.
 
-The backend foundation is available in this release. The matching browser setup and login screens are delivered by the frontend authentication follow-up.
+When password mode is enabled, the browser redirects an unclaimed installation to `/setup` and an existing protected installation to `/login`. The normal local flow remains unchanged when authentication is disabled.
 
 ### First owner setup
 
@@ -84,7 +84,7 @@ uv run alembic upgrade head
 uv run main.py
 ```
 
-An unclaimed installation prints a one-time setup token. The token:
+Open ApplyKit, paste the one-time token into the setup page, and create the owner password. The token:
 
 - expires after 30 minutes;
 - is stored only as a hash;
@@ -98,6 +98,7 @@ Owner passwords must contain 12–128 characters. Passphrases are supported with
 - Normal sessions expire 7 days after login.
 - **Remember this device** sessions expire after 30 days.
 - Expiry is absolute and does not extend with activity.
+- The browser warns during the final five minutes and can reauthenticate in a separate tab.
 - Session and CSRF token hashes are stored in SQLite; raw session tokens stay in cookies.
 - Session cookies are `HttpOnly` and `SameSite=Lax`.
 - Mutating requests require a session-bound CSRF token and an allowed `Origin`.
@@ -105,6 +106,8 @@ Owner passwords must contain 12–128 characters. Passphrases are supported with
 - Logout revokes the current session. Password reset revokes every session.
 
 Only health checks and the required setup/login endpoints remain public. Application data, AI settings, credentials, and API documentation require authentication in protected mode.
+
+Password changes and signing out other devices are available under **Settings → Security**. ApplyKit displays only the count of other active sessions and does not collect device, IP, or location details for this view.
 
 ### Remote HTTPS deployment
 
@@ -114,7 +117,7 @@ For localhost over HTTP:
 COOKIE_SECURE=false
 ```
 
-For any remote HTTPS deployment:
+For remote protected mode, serve the frontend and API from the same hostname. A reverse proxy can expose the frontend at `/` and forward `/api` to the backend. This is required so the browser can read the CSRF cookie and send it with mutation requests.
 
 ```env
 AUTH_MODE=password
@@ -122,11 +125,17 @@ COOKIE_SECURE=true
 CORS_ORIGINS=["https://applykit.example.com"]
 ```
 
-Do not expose protected mode through public plain HTTP. ApplyKit logs a warning when password mode starts with `COOKIE_SECURE=false`.
+Build the frontend with the same-origin API path:
+
+```bash
+VITE_API_BASE_URL=https://applykit.example.com/api docker compose up --build
+```
+
+Do not place the browser UI at `app.example.com` while using a host-only API cookie from `api.example.com`. Do not expose protected mode through public plain HTTP. ApplyKit logs a warning when password mode starts with `COOKIE_SECURE=false`.
 
 ### Forgotten password
 
-There is no email recovery or recovery key. Reset the password from the machine running ApplyKit:
+There is no email recovery or recovery key. The login page shows these same recovery commands, which must be run from the machine hosting ApplyKit:
 
 ```bash
 # Docker
@@ -210,11 +219,7 @@ CREDENTIAL_KEY_FILE=.applykit/credential.key
 MAX_PROVIDER_CREDENTIALS=20
 ```
 
-For a remote frontend build, set the browser-reachable API URL:
-
-```bash
-VITE_API_BASE_URL=https://api.example.com/api docker compose up --build
-```
+For a remote frontend build, use the browser-reachable same-host API URL described under protected mode.
 
 ## Stack
 
