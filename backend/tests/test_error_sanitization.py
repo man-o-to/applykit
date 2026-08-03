@@ -6,6 +6,7 @@ import pytest
 
 from app.exceptions.handlers import generic_exception_handler
 from app.exceptions.llm import LLMCallError
+from app.exceptions.stream import stream_error_event
 from app.routes.settings import test_connection as check_connection
 from app.schemas import UpdateSettingsRequest
 from app.services import llm as llm_service
@@ -29,6 +30,28 @@ def test_generic_exception_response_does_not_expose_raw_error():
     assert "internal.example" not in response.body.decode()
 
 
+def test_generic_exception_log_omits_exception_message_and_canary(caplog):
+    canary = "applykit-secret-canary-generic-log-b174"
+    response = asyncio.run(
+        generic_exception_handler(None, RuntimeError(f"provider leaked {canary}"))
+    )
+
+    assert response.status_code == 500
+    assert canary not in caplog.text
+    assert "RuntimeError" in caplog.text
+
+
+def test_stream_exception_log_omits_exception_message_and_canary(caplog):
+    canary = "applykit-secret-canary-stream-log-384c"
+
+    event = stream_error_event(RuntimeError(f"Authorization: Bearer {canary}"))
+
+    assert event.event == "error"
+    assert canary not in json.dumps(event.data)
+    assert canary not in caplog.text
+    assert "RuntimeError" in caplog.text
+
+
 def test_connection_failure_returns_safe_message(monkeypatch):
     def fail_completion(*args, **kwargs):
         raise RuntimeError(_RAW_ERROR)
@@ -47,6 +70,29 @@ def test_connection_failure_returns_safe_message(monkeypatch):
         "Connection failed. Verify the provider, model, API key, and network settings."
     )
     assert "sk-secret-value" not in response.message
+
+
+def test_connection_failure_log_omits_provider_exception_message(
+    monkeypatch,
+    caplog,
+):
+    canary = "applykit-secret-canary-provider-log-f068"
+
+    def fail_completion(*args, **kwargs):
+        raise RuntimeError(f"Authorization: Bearer {canary}")
+
+    monkeypatch.setattr(litellm, "completion", fail_completion)
+    response = check_connection(
+        UpdateSettingsRequest(
+            model="openai/gpt-4.1-mini",
+            api_key=canary,
+        )
+    )
+
+    assert response.ok is False
+    assert canary not in response.message
+    assert canary not in caplog.text
+    assert "RuntimeError" in caplog.text
 
 
 def test_llm_failure_raises_and_persists_only_safe_message(monkeypatch):
