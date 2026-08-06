@@ -55,6 +55,7 @@ _GENERIC_PATTERNS = (
     "various tasks",
     "multiple projects",
 )
+_CURRENT_DATE_VALUES = {"present", "current", "now"}
 _YEAR_RE = re.compile(r"\b(19|20)\d{2}\b")
 _NUMBER_RE = re.compile(r"\b\d+(?:[.,]\d+)?%?\b")
 
@@ -77,7 +78,7 @@ def _date_rank(value: str | None) -> tuple[int, int]:
     if not value:
         return (9999, 12)
     lowered = value.casefold()
-    if lowered in {"present", "current", "now"}:
+    if lowered in _CURRENT_DATE_VALUES:
         return (9999, 12)
     match = _YEAR_RE.search(value)
     year = int(match.group()) if match else 0
@@ -86,6 +87,20 @@ def _date_rank(value: str | None) -> tuple[int, int]:
     if month_match:
         month = int(month_match.group(1))
     return (year, month)
+
+
+def _date_style(value: str | None) -> str | None:
+    if not value:
+        return None
+    if value.casefold() in _CURRENT_DATE_VALUES:
+        return None
+    if "/" in value:
+        return "slash"
+    if "-" in value:
+        return "hyphen"
+    if re.search(r"[A-Za-z]", value):
+        return "text"
+    return "numeric"
 
 
 def _valid_url(value: str | None) -> bool:
@@ -155,17 +170,12 @@ def evaluate_quality(
             )
         )
 
-    date_styles: set[str] = set()
-    for experience in experiences:
-        for value in (experience.get("start_date"), experience.get("end_date")):
-            if not value:
-                continue
-            if "/" in value:
-                date_styles.add("slash")
-            elif "-" in value:
-                date_styles.add("hyphen")
-            elif re.search(r"[A-Za-z]", value):
-                date_styles.add("text")
+    date_styles = {
+        style
+        for experience in experiences
+        for value in (experience.get("start_date"), experience.get("end_date"))
+        if (style := _date_style(value)) is not None
+    }
     if len(date_styles) > 1:
         results.append(
             RuleResult.warning(
@@ -178,7 +188,11 @@ def evaluate_quality(
             )
         )
 
-    long_locations = [location for location, bullet in bullets if len(bullet.split()) > BULLET_MAX_WORDS]
+    long_locations = [
+        location
+        for location, bullet in bullets
+        if len(bullet.split()) > BULLET_MAX_WORDS
+    ]
     if long_locations:
         results.append(
             RuleResult.warning(
@@ -211,7 +225,9 @@ def evaluate_quality(
             )
         )
 
-    normalized_bullets = [(location, normalize_text(bullet)) for location, bullet in bullets]
+    normalized_bullets = [
+        (location, normalize_text(bullet)) for location, bullet in bullets
+    ]
     counts = Counter(value for _, value in normalized_bullets if value)
     duplicate_values = {value for value, count in counts.items() if count > 1}
     duplicate_locations = [
