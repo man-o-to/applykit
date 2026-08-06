@@ -43,7 +43,7 @@ def test_missing_summary_is_advisory_not_critical():
     assert rule.score_cap is None
 
 
-def test_reverse_chronological_experience_passes_order_check():
+def test_reverse_chronological_experience_and_present_use_one_date_style():
     results = evaluate_quality(
         snapshot={
             "name": "Edo",
@@ -72,6 +72,7 @@ def test_reverse_chronological_experience_passes_order_check():
     )
 
     assert not any(result.rule_id == "QUALITY-004" for result in results)
+    assert not any(result.rule_id == "QUALITY-005" for result in results)
 
 
 def test_core_empty_sections_cap_quality():
