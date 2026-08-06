@@ -1,7 +1,9 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 
+from app.database import configure_sqlite_security
 from app.models import Base, GeneratedCV, Profile
+from app.resume_readiness import models as readiness_models  # noqa: F401
 from app.resume_readiness.domain import (
     AnalysisMode,
     AnalysisStatus,
@@ -11,17 +13,21 @@ from app.resume_readiness.domain import (
     ReadinessResult,
     RuleResult,
 )
+from app.resume_readiness.models import (
+    ResumeReadinessAnalysis,
+    ResumeReadinessRuleResult,
+)
 from app.resume_readiness.repository import (
     create_analysis,
     get_latest_for_generated_cv,
     list_for_generated_cv,
 )
-from app.resume_readiness import models as readiness_models  # noqa: F401
 from app.role_match import models as role_match_models  # noqa: F401
 
 
 def make_session():
     engine = create_engine("sqlite:///:memory:")
+    event.listen(engine, "connect", configure_sqlite_security)
     Base.metadata.create_all(engine)
     return sessionmaker(bind=engine)()
 
@@ -139,5 +145,31 @@ def test_new_analysis_supersedes_previous_analysis():
             second.id,
             first.id,
         ]
+    finally:
+        db.close()
+
+
+def test_deleting_generated_cv_cascades_analysis_and_rule_results():
+    db = make_session()
+    try:
+        cv = GeneratedCV(profile_snapshot='{"name":"Edo","email":"e@example.com"}')
+        db.add(cv)
+        db.commit()
+        create_analysis(
+            db,
+            result=_complete_result(),
+            generated_cv=cv,
+            job_description_snapshot=None,
+            role_match_analysis_id=None,
+        )
+
+        assert db.query(ResumeReadinessAnalysis).count() == 1
+        assert db.query(ResumeReadinessRuleResult).count() == 1
+
+        db.delete(cv)
+        db.commit()
+
+        assert db.query(ResumeReadinessAnalysis).count() == 0
+        assert db.query(ResumeReadinessRuleResult).count() == 0
     finally:
         db.close()
