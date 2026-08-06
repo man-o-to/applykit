@@ -12,6 +12,7 @@ from app.resume_readiness.domain import (
     OverallResult,
     ReadinessResult,
 )
+from app.resume_readiness.normalization import normalize_text
 from app.resume_readiness.pipeline import AnalysisInput, analyze_generated_cv
 from app.resume_readiness.presenter import present_analysis
 from app.resume_readiness.repository import (
@@ -26,7 +27,6 @@ from app.resume_readiness.schemas import (
     ResumeReadinessListResponse,
     ResumeReadinessResponse,
 )
-from app.resume_readiness.normalization import normalize_text
 from app.role_match.repository import (
     get_analysis as get_role_match_analysis,
     serialize_analysis as serialize_role_match_analysis,
@@ -59,21 +59,11 @@ def _load_role_match(
     requested_job_description: str | None,
 ):
     if role_match_analysis_id is None:
-        return None, requested_job_description
+        return None, requested_job_description, None
 
     analysis = get_role_match_analysis(db, role_match_analysis_id)
     if analysis is None:
         raise HTTPException(status_code=404, detail="Role Evidence Match analysis not found.")
-
-    if (
-        generated_cv_profile_id is not None
-        and analysis.profile_id is not None
-        and generated_cv_profile_id != analysis.profile_id
-    ):
-        raise HTTPException(
-            status_code=422,
-            detail="Role Evidence Match belongs to a different career profile.",
-        )
 
     job_description = requested_job_description or analysis.job_description
     if (
@@ -86,7 +76,20 @@ def _load_role_match(
             detail="Role Evidence Match was created from a different job description.",
         )
 
-    return serialize_role_match_analysis(db, analysis), job_description
+    if generated_cv_profile_id is None:
+        return None, job_description, None
+
+    if analysis.profile_id is None or generated_cv_profile_id != analysis.profile_id:
+        raise HTTPException(
+            status_code=422,
+            detail="Role Evidence Match belongs to a different career profile.",
+        )
+
+    return (
+        serialize_role_match_analysis(db, analysis),
+        job_description,
+        analysis.id,
+    )
 
 
 @router.post(
@@ -102,7 +105,7 @@ def create_resume_readiness_analysis(
     if generated_cv is None:
         raise HTTPException(status_code=404, detail="Generated resume not found.")
 
-    role_match, job_description = _load_role_match(
+    role_match, job_description, effective_role_match_id = _load_role_match(
         db,
         role_match_analysis_id=request.role_match_analysis_id,
         generated_cv_profile_id=generated_cv.profile_id,
@@ -135,7 +138,7 @@ def create_resume_readiness_analysis(
         result=result,
         generated_cv=generated_cv,
         job_description_snapshot=job_description,
-        role_match_analysis_id=request.role_match_analysis_id,
+        role_match_analysis_id=effective_role_match_id,
     )
     return present_analysis(saved)
 
