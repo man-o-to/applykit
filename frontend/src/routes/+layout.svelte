@@ -19,11 +19,19 @@
   import { LogOut, Menu, X, Zap } from '@lucide/svelte';
   import '../app.css';
 
+  const WIDE_WORKSPACE_PATHS = new Set([
+    '/cover-letter',
+    '/resume',
+    '/generate',
+    '/applications',
+    '/tracker',
+  ]);
+
   let { data, children } = $props();
   const isAuthRoute = $derived(data.isAuthRoute);
   const onSettings = $derived(page.url.pathname.startsWith('/settings'));
   const shellWidth = $derived(
-    page.url.pathname === '/cover-letter' ? 'max-w-[80rem]' : 'max-w-5xl',
+    WIDE_WORKSPACE_PATHS.has(page.url.pathname) ? 'max-w-[80rem]' : 'max-w-5xl',
   );
   let mobileMenuOpen = $state(false);
   let signingOut = $state(false);
