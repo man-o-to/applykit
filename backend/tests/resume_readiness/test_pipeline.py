@@ -86,3 +86,27 @@ def test_low_coverage_requires_review_and_applies_cap():
     assert result.status.value == "needs_review"
     assert result.overall.score <= 55
     assert result.overall.hard_gate in {"PARSE-007", "PARSE-012"}
+
+
+def test_image_only_resume_is_definitively_not_ready():
+    result = analyze_generated_cv(
+        AnalysisInput(
+            generated_cv_id=42,
+            profile_snapshot=_snapshot(),
+        ),
+        PipelineDependencies(
+            render_pdf=lambda snapshot: b"pdf",
+            extract_pdf=lambda data: ExtractedDocument(
+                text="",
+                pages=(),
+                page_count=1,
+                has_text_layer=False,
+                warnings=("page_1_has_no_text",),
+            ),
+        ),
+    )
+
+    assert result.status.value == "complete"
+    assert result.overall.band == "not_ready"
+    assert result.overall.score <= 20
+    assert result.overall.hard_gate == "PARSE-001"
