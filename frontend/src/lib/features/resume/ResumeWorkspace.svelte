@@ -1,6 +1,12 @@
 <script lang="ts">
+  import { page } from '$app/state';
   import { activeProfile } from '$lib/activeProfile.svelte';
-  import { generateCvPdf, generateCvStream, getProfile } from '$lib/api';
+  import {
+    generateCvPdf,
+    generateCvStream,
+    getCvHistoryEntry,
+    getProfile,
+  } from '$lib/api';
   import { authState } from '$lib/auth-state.svelte';
   import AiReadinessNotice from '$lib/components/AiReadinessNotice.svelte';
   import CvPreview from '$lib/components/CvPreview.svelte';
@@ -27,7 +33,14 @@
   import { toastState } from '$lib/toast.svelte';
   import type { ProfileData } from '$lib/types';
   import { errorMessage } from '$lib/utils';
-  import { Download, FileCheck2, FileText, Sparkles, UserRoundPen } from '@lucide/svelte';
+  import {
+    Download,
+    FileCheck2,
+    FileText,
+    History,
+    Sparkles,
+    UserRoundPen,
+  } from '@lucide/svelte';
   import confetti from 'canvas-confetti';
 
   interface GenerateDraft {
@@ -54,9 +67,13 @@
   let profileLoading = $state(true);
   let jobDescription = $state('');
   let draftProfileId = $state<number | null>(null);
+  let loadSequence = 0;
 
   let generatedCvId = $state<number | null>(null);
+  let generatedCvProfileId = $state<number | null>(null);
+  let viewingSavedVersion = $state(false);
   let roleMatchAnalysisId = $state<number | null>(null);
+  let roleMatchJobDescription = $state('');
   let resumeReadiness = $state<ResumeReadinessResponse | null>(null);
   let readinessLoading = $state(false);
   let readinessError = $state('');
@@ -71,6 +88,21 @@
     );
   });
 
+  function requestedGeneratedCvId(): number | null {
+    const raw = page.url.searchParams.get('generated_cv_id');
+    if (!raw) return null;
+    const parsed = Number(raw);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+  }
+
+  function parseSnapshot(raw: string): ProfileData {
+    const parsed: unknown = JSON.parse(raw);
+    if (parsed == null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      throw new Error('The saved resume snapshot is not valid.');
+    }
+    return parsed as ProfileData;
+  }
+
   $effect(() => {
     data.readiness;
     readinessOverride = null;
@@ -78,15 +110,47 @@
 
   $effect(() => {
     const selected = activeProfile.current;
+    const requestedId = requestedGeneratedCvId();
+    const sequence = ++loadSequence;
+
     activeProfileData = null;
     profile = null;
     enhanced = false;
     profileLoading = true;
     draftProfileId = null;
     generatedCvId = null;
+    generatedCvProfileId = null;
+    viewingSavedVersion = requestedId != null;
     roleMatchAnalysisId = null;
+    roleMatchJobDescription = '';
     resumeReadiness = null;
     readinessError = '';
+
+    if (requestedId != null) {
+      Promise.all([
+        getCvHistoryEntry(requestedId),
+        getLatestResumeReadiness(requestedId),
+      ])
+        .then(([entry, latestAnalysis]) => {
+          if (sequence !== loadSequence) return;
+          const snapshot = parseSnapshot(entry.profile_snapshot);
+          profile = snapshot;
+          activeProfileData = snapshot;
+          enhanced = entry.enhanced;
+          generatedCvId = entry.id;
+          generatedCvProfileId = entry.profile_id;
+          resumeReadiness = latestAnalysis;
+        })
+        .catch((error: unknown) => {
+          if (sequence !== loadSequence) return;
+          readinessError = errorMessage(error);
+          toastState.error(`Could not open the saved resume: ${readinessError}`);
+        })
+        .finally(() => {
+          if (sequence === loadSequence) profileLoading = false;
+        });
+      return;
+    }
 
     if (!selected) {
       profileLoading = false;
@@ -95,6 +159,7 @@
 
     getProfile(selected.id)
       .then((loadedProfile) => {
+        if (sequence !== loadSequence) return;
         activeProfileData = loadedProfile;
         const restored = authState.authMode === 'password'
           ? consumeDraft<GenerateDraft>(sessionStorage, draftKey('/generate', selected.id))
@@ -107,18 +172,20 @@
         }
         draftProfileId = selected.id;
       })
-      .catch((error) => {
+      .catch((error: unknown) => {
+        if (sequence !== loadSequence) return;
         toastState.error(`Failed to load profile data: ${errorMessage(error)}`);
       })
       .finally(() => {
-        profileLoading = false;
+        if (sequence === loadSequence) profileLoading = false;
       });
   });
 
   $effect(() => {
     const selected = activeProfile.current;
     if (
-      authState.authMode !== 'password'
+      viewingSavedVersion
+      || authState.authMode !== 'password'
       || !selected
       || profileLoading
       || draftProfileId !== selected.id
@@ -146,7 +213,10 @@
     profile = null;
     enhanced = false;
     generatedCvId = null;
+    generatedCvProfileId = selected.id;
+    viewingSavedVersion = false;
     roleMatchAnalysisId = null;
+    roleMatchJobDescription = '';
     resumeReadiness = null;
     readinessError = '';
 
@@ -165,8 +235,10 @@
               id: number;
             };
             profile = result.profile;
+            activeProfileData = result.profile;
             enhanced = result.enhanced;
             generatedCvId = result.id;
+            generatedCvProfileId = selected.id;
             toastState.success('Resume generated successfully.');
             confetti({ particleCount: 120, spread: 65, origin: { y: 0.6 } });
           } else if (event === 'rate_limit') {
@@ -204,21 +276,38 @@
   }
 
   async function runResumeReadiness() {
-    const selected = activeProfile.current;
-    if (!selected || generatedCvId == null) return;
+    if (generatedCvId == null) return;
 
     readinessLoading = true;
     readinessError = '';
     try {
       const targetJob = jobDescription.trim();
-      let analysisId = roleMatchAnalysisId;
-      if (targetJob && analysisId == null) {
-        const roleMatch = await analyzeRoleMatch({
-          profile_id: selected.id,
-          job_description: targetJob,
-        });
-        analysisId = roleMatch.id;
-        roleMatchAnalysisId = roleMatch.id;
+      const selected = activeProfile.current;
+      let analysisId = (
+        roleMatchJobDescription === targetJob ? roleMatchAnalysisId : null
+      );
+
+      const profileMatches = (
+        selected != null
+        && (generatedCvProfileId == null || generatedCvProfileId === selected.id)
+      );
+
+      if (targetJob && analysisId == null && profileMatches && selected) {
+        try {
+          const roleMatch = await analyzeRoleMatch({
+            profile_id: selected.id,
+            job_description: targetJob,
+          });
+          analysisId = roleMatch.id;
+          roleMatchAnalysisId = roleMatch.id;
+          roleMatchJobDescription = targetJob;
+        } catch (error: unknown) {
+          roleMatchAnalysisId = null;
+          roleMatchJobDescription = '';
+          toastState.error(
+            `Role Evidence Match was unavailable. Parseability and quality will still be checked: ${errorMessage(error)}`,
+          );
+        }
       }
 
       resumeReadiness = await createResumeReadinessAnalysis({
@@ -238,6 +327,7 @@
   async function refreshLatestReadiness() {
     if (generatedCvId == null) return;
     readinessLoading = true;
+    readinessError = '';
     try {
       resumeReadiness = await getLatestResumeReadiness(generatedCvId);
     } catch (error: unknown) {
@@ -264,6 +354,21 @@
     </div>
   {/if}
 
+  {#if viewingSavedVersion && generatedCvId != null}
+    <div class="mt-6 flex flex-col justify-between gap-3 rounded-xl border bg-muted/30 p-4 sm:flex-row sm:items-center">
+      <div class="flex items-start gap-3">
+        <History class="mt-0.5 h-5 w-5 text-primary" />
+        <div>
+          <p class="font-semibold">Viewing saved resume #{generatedCvId}</p>
+          <p class="text-sm text-muted-foreground">
+            This immutable historical version can be downloaded and analyzed without regenerating it.
+          </p>
+        </div>
+      </div>
+      <Button href="/resume" variant="outline">Return to active profile</Button>
+    </div>
+  {/if}
+
   <div class="mt-6 lg:grid lg:grid-cols-2 lg:items-start lg:gap-10">
     <div class="space-y-5 lg:sticky lg:top-6">
       <div class="space-y-2">
@@ -284,13 +389,22 @@
         <div class="flex items-center gap-2 rounded-lg border bg-muted/50 px-3 py-2 text-sm">
           <span>{activeProfile.current.icon}</span>
           <span class="font-medium">{activeProfile.current.label}</span>
+          {#if viewingSavedVersion && generatedCvProfileId !== activeProfile.current.id}
+            <span class="ml-auto text-xs text-muted-foreground">Historical profile snapshot</span>
+          {/if}
         </div>
       {/if}
 
       <div class="flex flex-wrap gap-3">
         <Button
           onclick={handleGenerate}
-          disabled={loading || !aiReady || isProfileEmpty || profileLoading}
+          disabled={
+            loading
+            || !activeProfile.current
+            || !aiReady
+            || isProfileEmpty
+            || profileLoading
+          }
           class="shadow-md"
         >
           <Sparkles class="mr-2 h-4 w-4 {loading ? 'animate-pulse' : ''}" />
@@ -310,7 +424,7 @@
           <Sparkles class="h-4 w-4 animate-pulse" />
           Preparing a role-specific resume…
         </div>
-      {:else if profile}
+      {:else if profile && generatedCvId != null}
         <div class="rounded-lg border bg-muted/50 p-3 text-sm">
           <span class="font-medium">{enhanced ? 'AI-assisted version' : 'Profile-based version'}</span>
           <span class="text-muted-foreground"> — Saved as resume #{generatedCvId}.</span>
