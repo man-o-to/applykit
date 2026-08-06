@@ -1,7 +1,7 @@
 <script lang="ts">
-  import LegacyResumePage from '../generate/+page.svelte';
+  import ResumeWorkspace from '$lib/features/resume/ResumeWorkspace.svelte';
 
   let { data } = $props();
 </script>
 
-<LegacyResumePage {data} />
+<ResumeWorkspace {data} />
