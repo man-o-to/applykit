@@ -13,7 +13,7 @@
 </div>
 
 <style>
-  .canonical-documents-workspace :global(> .space-y-6 > h1:first-child) {
+  .canonical-documents-workspace :global(.space-y-6 > h1:first-child) {
     display: none;
   }
 </style>
