@@ -13,7 +13,7 @@
 </div>
 
 <style>
-  .canonical-applications-workspace :global(> .space-y-4 > div:first-child) {
+  .canonical-applications-workspace :global(.space-y-4 > div:first-child) {
     display: none;
   }
 </style>
