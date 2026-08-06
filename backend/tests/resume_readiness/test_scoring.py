@@ -1,4 +1,9 @@
-from app.resume_readiness.domain import AnalysisMode, Category, RuleResult
+from app.resume_readiness.domain import (
+    AnalysisMode,
+    Category,
+    OverallResult,
+    RuleResult,
+)
 from app.resume_readiness.scoring import (
     calculate_category_score,
     calculate_overall_result,
@@ -60,9 +65,7 @@ def test_general_mode_excludes_tailoring():
 
 
 def test_operational_failure_has_no_score():
-    result = result = __import__(
-        "app.resume_readiness.domain", fromlist=["OverallResult"]
-    ).OverallResult.failed("PDF_PARSE_FAILED")
+    result = OverallResult.failed("PDF_PARSE_FAILED")
 
     assert result.status == "failed"
     assert result.score is None
