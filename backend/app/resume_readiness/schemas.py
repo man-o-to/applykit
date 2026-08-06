@@ -5,6 +5,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+from app.schemas import GeneratedCVEntry
+
 
 class ResumeReadinessAnalyzeRequest(BaseModel):
     generated_cv_id: int = Field(gt=0)
@@ -95,3 +97,12 @@ class ResumeReadinessHistorySummary(BaseModel):
     status: Literal["complete", "needs_review", "failed"]
     score: int | None
     band: str | None
+
+
+class GeneratedCVWithReadinessEntry(GeneratedCVEntry):
+    readiness: ResumeReadinessHistorySummary | None = None
+
+
+class GeneratedCVWithReadinessListResponse(BaseModel):
+    items: list[GeneratedCVWithReadinessEntry]
+    total: int
