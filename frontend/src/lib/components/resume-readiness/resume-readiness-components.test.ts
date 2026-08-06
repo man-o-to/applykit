@@ -28,4 +28,19 @@ describe('resume readiness components', () => {
     expect(source).toContain('generatedCvId = result.id');
     expect(source).toContain('Check Resume Readiness');
   });
+
+  test('workspace loads historical resumes from the backward-compatible query', () => {
+    const workspace = readFileSync(
+      'src/lib/features/resume/ResumeWorkspace.svelte',
+      'utf8',
+    );
+    const card = readFileSync(
+      'src/lib/components/history/CvCard.svelte',
+      'utf8',
+    );
+
+    expect(workspace).toContain("searchParams.get('generated_cv_id')");
+    expect(workspace).toContain('getCvHistoryEntry(requestedId)');
+    expect(card).toContain('/resume?generated_cv_id={entry.id}');
+  });
 });
