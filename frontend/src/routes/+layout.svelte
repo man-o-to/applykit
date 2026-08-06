@@ -103,7 +103,7 @@
             class="font-bold text-lg tracking-tight hover:text-primary transition-colors shrink-0"
           >ApplyKit</a>
 
-          <nav class="hidden md:flex items-center gap-1 animate-in fade-in slide-in-from-left-2 duration-500">
+          <nav class="hidden lg:flex items-center gap-1 animate-in fade-in slide-in-from-left-2 duration-500">
             {#each NAVIGATION_ITEMS as item, index}
               {#if index > 0 && NAVIGATION_ITEMS[index - 1].group !== item.group}
                 <span class="w-px h-4 bg-border mx-2 shrink-0"></span>
@@ -127,14 +127,14 @@
               type="button"
               onclick={signOut}
               disabled={signingOut}
-              class="hidden md:inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
+              class="hidden lg:inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
             >
               <LogOut class="h-4 w-4" />Sign out
             </button>
           {/if}
           <button
             onclick={() => mobileMenuOpen = !mobileMenuOpen}
-            class="md:hidden flex items-center justify-center w-8 h-8 rounded-md hover:bg-accent transition-colors"
+            class="lg:hidden flex items-center justify-center w-8 h-8 rounded-md hover:bg-accent transition-colors"
             aria-label="Toggle menu"
           >
             {#if mobileMenuOpen}
@@ -147,7 +147,7 @@
       </div>
 
       {#if mobileMenuOpen}
-        <div class="md:hidden border-t border-border bg-card animate-in slide-in-from-top-2 duration-200">
+        <div class="lg:hidden border-t border-border bg-card animate-in slide-in-from-top-2 duration-200">
           <nav class="mx-auto {shellWidth}">
             {#each NAVIGATION_ITEMS as item}
               <a href={item.href} class="{mobileNavClass(item)} {item.id === 'prepare' ? 'gap-2' : ''}">
