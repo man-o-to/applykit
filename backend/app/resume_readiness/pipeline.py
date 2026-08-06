@@ -11,6 +11,7 @@ from app.resume_readiness.domain import (
     ExtractedDocument,
     OverallResult,
     ReadinessResult,
+    RuleOutcome,
     RuleResult,
 )
 from app.resume_readiness.extraction import extract_pdf
@@ -73,6 +74,16 @@ def _hard_gate(rules: list[RuleResult]) -> tuple[str | None, int | None]:
     return winner.rule_id, winner.score_cap
 
 
+def _requires_human_review(rules: list[RuleResult]) -> bool:
+    definitive_no_text = any(
+        rule.rule_id == "PARSE-001" and rule.outcome == RuleOutcome.FAIL
+        for rule in rules
+    )
+    if definitive_no_text:
+        return False
+    return any(rule.requires_review for rule in rules)
+
+
 def analyze_generated_cv(
     analysis_input: AnalysisInput,
     dependencies: PipelineDependencies = DEFAULT_DEPENDENCIES,
@@ -125,7 +136,6 @@ def analyze_generated_cv(
         else None
     )
     hard_gate, hard_gate_cap = _hard_gate(all_rules)
-    needs_review = any(rule.requires_review for rule in all_rules)
     overall = calculate_overall_result(
         mode=mode,
         parseability_score=parseability.score,
@@ -133,7 +143,7 @@ def analyze_generated_cv(
         tailoring_score=tailoring.score if tailoring else None,
         hard_gate=hard_gate,
         hard_gate_cap=hard_gate_cap,
-        needs_review=needs_review,
+        needs_review=_requires_human_review(all_rules),
     )
 
     return ReadinessResult(
