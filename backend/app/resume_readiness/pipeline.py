@@ -7,6 +7,7 @@ from app.resume_readiness.coverage import calculate_source_coverage
 from app.resume_readiness.domain import (
     AnalysisMode,
     AnalysisStatus,
+    Category,
     ExtractedDocument,
     OverallResult,
     ReadinessResult,
@@ -20,7 +21,6 @@ from app.resume_readiness.scoring import (
     calculate_category_score,
     calculate_overall_result,
 )
-from app.resume_readiness.domain import Category
 from integration.pdf import html_to_pdf
 from integration.template import render_cv_template
 
@@ -59,6 +59,8 @@ def _failure(mode: AnalysisMode, code: str) -> ReadinessResult:
         quality=None,
         tailoring=None,
         rule_results=(),
+        extraction=None,
+        coverage=None,
         failure_code=code,
     )
 
@@ -142,4 +144,6 @@ def analyze_generated_cv(
         quality=quality,
         tailoring=tailoring,
         rule_results=tuple(all_rules),
+        extraction=extracted,
+        coverage=coverage,
     )
