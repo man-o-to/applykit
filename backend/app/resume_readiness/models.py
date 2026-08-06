@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from app.models import Base
@@ -84,5 +84,5 @@ class ResumeReadinessRuleResult(Base):
     explanation = Column(Text, nullable=False)
     evidence_json = Column(Text, nullable=False, default="{}")
     locations_json = Column(Text, nullable=False, default="[]")
-    requires_review = Column(Integer, nullable=False, default=0)
+    requires_review = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC))
