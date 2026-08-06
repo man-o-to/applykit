@@ -39,7 +39,7 @@ const PRESENTATIONS: Record<NextAction, Omit<NextActionPresentation, 'id'>> = {
   configure_ai: {
     title: 'Verify your AI connection',
     description: 'Connect and test a provider before generating tailored application materials.',
-    href: '/settings/ai',
+    href: '/settings',
     actionLabel: 'Open AI settings',
   },
   generate_resume: {
