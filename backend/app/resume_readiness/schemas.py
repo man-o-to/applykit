@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 
 class ResumeReadinessAnalyzeRequest(BaseModel):
     generated_cv_id: int = Field(gt=0)
-    job_description: str | None = None
+    job_description: str | None = Field(default=None, max_length=100_000)
     role_match_analysis_id: int | None = Field(default=None, gt=0)
 
 
