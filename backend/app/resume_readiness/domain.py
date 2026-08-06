@@ -247,4 +247,6 @@ class ReadinessResult:
     quality: CategoryResult | None
     tailoring: CategoryResult | None
     rule_results: tuple[RuleResult, ...]
+    extraction: ExtractedDocument | None = None
+    coverage: CoverageResult | None = None
     failure_code: str | None = None
