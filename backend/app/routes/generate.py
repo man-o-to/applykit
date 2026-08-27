@@ -1,4 +1,5 @@
 import asyncio
+import io
 import json
 import logging
 from collections.abc import AsyncIterable
@@ -59,10 +60,31 @@ router = APIRouter()
 # ---------------------------------------------------------------------------
 
 
+def _pdf_page_count(pdf_bytes: bytes) -> int:
+    import pdfplumber
+
+    with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
+        return len(pdf.pages)
+
+
+# Projects arrive pre-ranked by relevance (see ATS_SYSTEM_PROMPT instruction 3),
+# so trimming to a prefix keeps the most relevant ones.
+MAX_PROJECTS_WHEN_TRIMMED = 3
+
+
 def _render_cv_pdf(profile_data: dict) -> Response:
     try:
         html = render_cv_template(profile_data)
         pdf_bytes = html_to_pdf(html)
+
+        projects = profile_data.get("projects") or []
+        if len(projects) > MAX_PROJECTS_WHEN_TRIMMED and _pdf_page_count(pdf_bytes) > 1:
+            trimmed_data = {
+                **profile_data,
+                "projects": projects[:MAX_PROJECTS_WHEN_TRIMMED],
+            }
+            trimmed_html = render_cv_template(trimmed_data)
+            pdf_bytes = html_to_pdf(trimmed_html)
     except PDFRenderError as exc:
         raise PDFRenderFailedError() from exc
     return Response(
@@ -113,6 +135,19 @@ def _build_cover_letter_prompt(p: ProfileData, req: CoverLetterRequest) -> str:
     )
     parts.append(f"TONE INSTRUCTION: {tone_modifier}")
     return "\n".join(parts)
+
+
+def _apply_ats_enhancement(
+    profile_data: ProfileData, ats: ATSEnhancement
+) -> ProfileData:
+    return profile_data.model_copy(
+        update={
+            "summary": ats.summary,
+            "work_experience": ats.work_experience,
+            "projects": ats.projects or profile_data.projects,
+            "skill_categories": ats.skill_categories or None,
+        }
+    )
 
 
 def _build_cv_enhancement_prompt(
@@ -170,12 +205,7 @@ def generate_cv(req: GenerateCvRequest, db: Session = Depends(get_db)):
                 profile_id=req.profile_id,
             )
             ats = parse_structured_output(llm_output, ATSEnhancement)
-            result_profile = profile_data.model_copy(
-                update={
-                    "summary": ats.summary,
-                    "work_experience": ats.work_experience,
-                }
-            )
+            result_profile = _apply_ats_enhancement(profile_data, ats)
             enhanced = True
         except RateLimitError:
             raise
@@ -221,9 +251,7 @@ async def generate_cv_stream(req: GenerateCvRequest, db: Session = Depends(get_d
                 profile_id=req.profile_id,
             )
             ats = parse_structured_output(llm_output, ATSEnhancement)
-            result_profile = profile_data.model_copy(
-                update={"summary": ats.summary, "work_experience": ats.work_experience}
-            )
+            result_profile = _apply_ats_enhancement(profile_data, ats)
             enhanced = True
         except RateLimitError as exc:
             yield stream_error_event(exc)

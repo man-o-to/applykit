@@ -96,6 +96,11 @@
   }
   .skills-text {
     color: #4b5563;
+    margin-bottom: 2px;
+  }
+  .skills-category-label {
+    font-weight: bold;
+    color: #000;
   }
   .proj-tech {
     font-size: 11px;
@@ -191,7 +196,14 @@
   </section>
   {% endif %}
 
-  {% if profile.skills %}
+  {% if profile.skill_categories %}
+  <section class="cv-section">
+    <h2 class="section-title">Skills</h2>
+    {% for category in profile.skill_categories %}
+    <p class="skills-text"><span class="skills-category-label">{{ category.label }}:</span> {{ category.skills | join(', ') }}</p>
+    {% endfor %}
+  </section>
+  {% elif profile.skills %}
   <section class="cv-section">
     <h2 class="section-title">Skills</h2>
     <p class="skills-text">{{ profile.skills | join(' · ') }}</p>
