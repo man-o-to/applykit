@@ -10,9 +10,9 @@ env = Environment(
 )
 
 
-def render_cv_template(profile_data: dict) -> str:
+def render_cv_template(profile_data: dict, spacing_scale: float = 1.0) -> str:
     template = env.get_template("cv/modern_v1.html")
-    return template.render(profile=profile_data)
+    return template.render(profile=profile_data, spacing_scale=spacing_scale)
 
 
 def render_cover_letter_template(letter_data: dict) -> str:
