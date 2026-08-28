@@ -78,6 +78,18 @@
     </section>
   {/if}
 
+  {#if profile.certifications.length}
+    <section class="mb-4">
+      <h2 class="text-xs font-bold uppercase tracking-widest border-b border-border dark:border-zinc-700 print:border-black pb-0.5 mb-2 text-foreground dark:text-zinc-200">Certifications & Training</h2>
+      {#each profile.certifications as c}
+        <div class="flex justify-between text-sm mb-1">
+          <span class="text-foreground dark:text-zinc-200">{c.name} — <span class="text-muted-foreground dark:text-zinc-400 print:text-gray-600">{c.issuer}</span></span>
+          <span class="text-xs text-muted-foreground dark:text-zinc-500 print:text-gray-500">{c.date}</span>
+        </div>
+      {/each}
+    </section>
+  {/if}
+
   {#if profile.skill_categories?.length}
     <section class="mb-4">
       <h2 class="text-xs font-bold uppercase tracking-widest border-b border-border dark:border-zinc-700 print:border-black pb-0.5 mb-2 text-foreground dark:text-zinc-200">Skills</h2>
@@ -91,18 +103,6 @@
     <section class="mb-4">
       <h2 class="text-xs font-bold uppercase tracking-widest border-b border-border dark:border-zinc-700 print:border-black pb-0.5 mb-2 text-foreground dark:text-zinc-200">Skills</h2>
       <p class="text-muted-foreground dark:text-zinc-300 print:text-black">{profile.skills.join(' · ')}</p>
-    </section>
-  {/if}
-
-  {#if profile.certifications.length}
-    <section class="mb-4">
-      <h2 class="text-xs font-bold uppercase tracking-widest border-b border-border dark:border-zinc-700 print:border-black pb-0.5 mb-2 text-foreground dark:text-zinc-200">Certifications & Training</h2>
-      {#each profile.certifications as c}
-        <div class="flex justify-between text-sm mb-1">
-          <span class="text-foreground dark:text-zinc-200">{c.name} — <span class="text-muted-foreground dark:text-zinc-400 print:text-gray-600">{c.issuer}</span></span>
-          <span class="text-xs text-muted-foreground dark:text-zinc-500 print:text-gray-500">{c.date}</span>
-        </div>
-      {/each}
     </section>
   {/if}
 </div>
