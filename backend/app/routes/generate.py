@@ -47,7 +47,12 @@ from app.services.settings import (
     is_llm_configured,
 )
 from app.utils import format_profile_for_llm, profile_to_schema
-from integration.pdf import PDFRenderError, html_to_pdf
+from integration.pdf import (
+    PDFRenderError,
+    document_to_pdf,
+    html_to_document,
+    html_to_pdf,
+)
 from integration.template import render_cover_letter_template, render_cv_template
 
 logger = logging.getLogger(__name__)
@@ -76,24 +81,75 @@ MAX_PROJECTS_WHEN_TRIMMED = 3
 # sparse rather than spacious, so the search never goes past it.
 MIN_SPACING_SCALE = 1.0
 MAX_SPACING_SCALE = 1.8
-SPACING_SEARCH_ITERATIONS = 6
+# Second data point for the linear slack estimate below; the midpoint of the
+# scale range gives the widest safety margin against the fallback bisection.
+SPACING_PROBE_SCALE = 1.4
+# Bounded fallback bisection for the rare case where the linear estimate
+# overshoots (line-wrapping shifts mean scale-to-height isn't perfectly linear).
+SPACING_CORRECTION_ITERATIONS = 2
+
+_MM_TO_PT = 2.8346456693
+_PAGE_HEIGHT_PT = 297 * _MM_TO_PT  # A4, matches @page size in modern_v1.html
+_PAGE_BOTTOM_MARGIN_PT = 10 * _MM_TO_PT  # matches @page margin in modern_v1.html
+_MAX_CONTENT_BOTTOM_PT = _PAGE_HEIGHT_PT - _PAGE_BOTTOM_MARGIN_PT
 
 
-def _find_max_fitting_spacing_scale(profile_data: dict, base_pdf_bytes: bytes) -> bytes:
-    # base_pdf_bytes must already be a confirmed one-page render at MIN_SPACING_SCALE;
-    # it doubles as the fallback if no larger scale fits.
-    lo, hi = MIN_SPACING_SCALE, MAX_SPACING_SCALE
+def _content_bottom_pt(pdf_bytes: bytes) -> float:
+    import pdfplumber
+
+    with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
+        words = pdf.pages[0].extract_words()
+        return max((w["bottom"] for w in words), default=0.0)
+
+
+def _bisect_for_fit(
+    profile_data: dict, base_pdf_bytes: bytes, lo: float, hi: float
+) -> bytes:
     best_bytes = base_pdf_bytes
-    for _ in range(SPACING_SEARCH_ITERATIONS):
+    for _ in range(SPACING_CORRECTION_ITERATIONS):
         mid = (lo + hi) / 2
-        candidate_html = render_cv_template(profile_data, spacing_scale=mid)
-        candidate_bytes = html_to_pdf(candidate_html)
-        if _pdf_page_count(candidate_bytes) <= 1:
-            best_bytes = candidate_bytes
+        mid_document = html_to_document(
+            render_cv_template(profile_data, spacing_scale=mid)
+        )
+        if len(mid_document.pages) <= 1:
+            best_bytes = document_to_pdf(mid_document)
             lo = mid
         else:
             hi = mid
     return best_bytes
+
+
+def _find_max_fitting_spacing_scale(profile_data: dict, base_pdf_bytes: bytes) -> bytes:
+    # base_pdf_bytes must already be a confirmed one-page render at MIN_SPACING_SCALE;
+    # it doubles as the fallback whenever a larger scale can't be confirmed.
+    base_bottom = _content_bottom_pt(base_pdf_bytes)
+    slack = _MAX_CONTENT_BOTTOM_PT - base_bottom
+    if slack <= 0:
+        return base_pdf_bytes
+
+    probe_document = html_to_document(
+        render_cv_template(profile_data, spacing_scale=SPACING_PROBE_SCALE)
+    )
+    if len(probe_document.pages) > 1:
+        return _bisect_for_fit(
+            profile_data, base_pdf_bytes, MIN_SPACING_SCALE, SPACING_PROBE_SCALE
+        )
+
+    # Margins scale linearly with spacing_scale, so two points fully determine
+    # how much extra page height a given scale buys.
+    probe_bottom = _content_bottom_pt(document_to_pdf(probe_document))
+    slope = (probe_bottom - base_bottom) / (SPACING_PROBE_SCALE - MIN_SPACING_SCALE)
+    if slope <= 0:
+        return base_pdf_bytes
+
+    target_scale = min(MIN_SPACING_SCALE + slack / slope, MAX_SPACING_SCALE)
+    target_document = html_to_document(
+        render_cv_template(profile_data, spacing_scale=target_scale)
+    )
+    if len(target_document.pages) == 1:
+        return document_to_pdf(target_document)
+
+    return _bisect_for_fit(profile_data, base_pdf_bytes, MIN_SPACING_SCALE, target_scale)
 
 
 def _render_cv_pdf(profile_data: dict) -> Response:
