@@ -48,6 +48,33 @@ def test_render_cv_pdf_keeps_all_projects_when_they_fit_one_page():
     assert _page_count(response.body) == 1
 
 
+def _content_bottom(pdf_bytes: bytes) -> float:
+    with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
+        words = pdf.pages[0].extract_words()
+        return max(w["bottom"] for w in words)
+
+
+def test_render_cv_pdf_stretches_spacing_when_page_has_slack():
+    profile = _profile(project_count=0)
+    profile["work_experience"] = [
+        {
+            "company": "Acme",
+            "role": "Engineer",
+            "start_date": "2022",
+            "end_date": None,
+            "bullets": ["Did a thing.", "Did another thing."],
+        }
+    ]
+
+    base_pdf = generate_routes.html_to_pdf(generate_routes.render_cv_template(profile))
+    assert _page_count(base_pdf) == 1
+
+    response = generate_routes._render_cv_pdf(profile)
+
+    assert _page_count(response.body) == 1
+    assert _content_bottom(response.body) > _content_bottom(base_pdf)
+
+
 def test_render_cv_pdf_trims_to_top_projects_when_they_would_overflow():
     profile = _profile(project_count=8)
 

@@ -71,6 +71,30 @@ def _pdf_page_count(pdf_bytes: bytes) -> int:
 # so trimming to a prefix keeps the most relevant ones.
 MAX_PROJECTS_WHEN_TRIMMED = 3
 
+# Bounds for stretching inter-section/item spacing to fill a page that has
+# room to spare. 1.8x is roughly where extra whitespace starts reading as
+# sparse rather than spacious, so the search never goes past it.
+MIN_SPACING_SCALE = 1.0
+MAX_SPACING_SCALE = 1.8
+SPACING_SEARCH_ITERATIONS = 6
+
+
+def _find_max_fitting_spacing_scale(profile_data: dict, base_pdf_bytes: bytes) -> bytes:
+    # base_pdf_bytes must already be a confirmed one-page render at MIN_SPACING_SCALE;
+    # it doubles as the fallback if no larger scale fits.
+    lo, hi = MIN_SPACING_SCALE, MAX_SPACING_SCALE
+    best_bytes = base_pdf_bytes
+    for _ in range(SPACING_SEARCH_ITERATIONS):
+        mid = (lo + hi) / 2
+        candidate_html = render_cv_template(profile_data, spacing_scale=mid)
+        candidate_bytes = html_to_pdf(candidate_html)
+        if _pdf_page_count(candidate_bytes) <= 1:
+            best_bytes = candidate_bytes
+            lo = mid
+        else:
+            hi = mid
+    return best_bytes
+
 
 def _render_cv_pdf(profile_data: dict) -> Response:
     try:
@@ -79,12 +103,15 @@ def _render_cv_pdf(profile_data: dict) -> Response:
 
         projects = profile_data.get("projects") or []
         if len(projects) > MAX_PROJECTS_WHEN_TRIMMED and _pdf_page_count(pdf_bytes) > 1:
-            trimmed_data = {
+            profile_data = {
                 **profile_data,
                 "projects": projects[:MAX_PROJECTS_WHEN_TRIMMED],
             }
-            trimmed_html = render_cv_template(trimmed_data)
+            trimmed_html = render_cv_template(profile_data)
             pdf_bytes = html_to_pdf(trimmed_html)
+
+        if _pdf_page_count(pdf_bytes) == 1:
+            pdf_bytes = _find_max_fitting_spacing_scale(profile_data, pdf_bytes)
     except PDFRenderError as exc:
         raise PDFRenderFailedError() from exc
     return Response(
