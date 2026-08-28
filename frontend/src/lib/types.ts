@@ -275,7 +275,12 @@ export interface ApplicationEntry {
   linked_cover_letter_id: number | null;
   linked_cv_id: number | null;
   location: string | null;
-  salary: string | null;
+  min_salary: number | null;
+  max_salary: number | null;
+  excitement: number | null;
+  date_posted: string | null;  // ISO date string
+  deadline: string | null;  // ISO date string
+  follow_up: string | null;  // ISO date string
   job_description: string | null;
 }
 
@@ -293,7 +298,12 @@ export interface CreateApplicationRequest {
   applied_date?: string | null;
   profile_id?: number | null;
   location?: string | null;
-  salary?: string | null;
+  min_salary?: number | null;
+  max_salary?: number | null;
+  excitement?: number | null;
+  date_posted?: string | null;
+  deadline?: string | null;
+  follow_up?: string | null;
   job_description?: string | null;
 }
 
@@ -305,7 +315,12 @@ export interface UpdateApplicationRequest {
   notes?: string | null;
   applied_date?: string | null;
   location?: string | null;
-  salary?: string | null;
+  min_salary?: number | null;
+  max_salary?: number | null;
+  excitement?: number | null;
+  date_posted?: string | null;
+  deadline?: string | null;
+  follow_up?: string | null;
   job_description?: string | null;
 }
 
