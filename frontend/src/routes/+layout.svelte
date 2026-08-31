@@ -74,7 +74,7 @@
           <div class="flex items-center gap-2 shrink-0">
             <ProfileSwitcher />
             <ThemeToggle />
-            <SettingsButton />
+            <div class="md:hidden"><SettingsButton /></div>
             {#if authState.authMode === 'password'}
               <button
                 type="button"
