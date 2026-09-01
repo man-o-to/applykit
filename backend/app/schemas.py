@@ -295,6 +295,8 @@ class ParseJobDescriptionResponse(BaseModel):
     role_title: str | None
     location: str | None
     salary: str | None
+    min_salary: int | None = None
+    max_salary: int | None = None
 
 
 class ScrapeAnalyzeRequest(BaseModel):
@@ -307,6 +309,8 @@ class ScrapeAnalyzeResponse(BaseModel):
     role_title: str | None
     location: str | None
     salary: str | None
+    min_salary: int | None = None
+    max_salary: int | None = None
     job_description: str
     source: Literal["greenhouse_api", "lever_api", "ashby_api", "jina", "crawl4ai"]
 

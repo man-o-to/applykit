@@ -102,6 +102,8 @@ export interface ScrapeJobResponse {
   role_title: string | null;
   location: string | null;
   salary: string | null;
+  min_salary: number | null;
+  max_salary: number | null;
   source: 'greenhouse_api' | 'lever_api' | 'ashby_api' | 'jina' | 'crawl4ai';
 }
 
@@ -110,6 +112,8 @@ export interface ScrapeAnalyzeResponse {
   role_title: string | null;
   location: string | null;
   salary: string | null;
+  min_salary: number | null;
+  max_salary: number | null;
   job_description: string;
   source: 'greenhouse_api' | 'lever_api' | 'ashby_api' | 'jina' | 'crawl4ai';
 }
