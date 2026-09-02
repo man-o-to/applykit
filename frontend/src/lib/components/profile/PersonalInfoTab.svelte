@@ -13,8 +13,9 @@
 
   interface Props {
     profile: ProfileData;
+    hideAiTools?: boolean;
   }
-  let { profile = $bindable() }: Props = $props();
+  let { profile = $bindable(), hideAiTools = false }: Props = $props();
 
   function addGithub() {
     profile.github = [...profile.github, ''];
@@ -145,18 +146,20 @@
     <div class="space-y-2 sm:col-span-2">
       <div class="flex items-center justify-between">
         <Label for="summary">Professional Summary</Label>
-        <button
-          type="button"
-          onclick={() => { showSummaryGen = !showSummaryGen; summaryPreview = ''; }}
-          class="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
-        >
-          <SparklesIcon class="w-3.5 h-3.5" />
-          Generate with AI
-          <ChevronDown class="w-3 h-3 transition-transform {showSummaryGen ? 'rotate-180' : ''}" />
-        </button>
+        {#if !hideAiTools}
+          <button
+            type="button"
+            onclick={() => { showSummaryGen = !showSummaryGen; summaryPreview = ''; }}
+            class="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
+          >
+            <SparklesIcon class="w-3.5 h-3.5" />
+            Generate with AI
+            <ChevronDown class="w-3 h-3 transition-transform {showSummaryGen ? 'rotate-180' : ''}" />
+          </button>
+        {/if}
       </div>
 
-      {#if showSummaryGen}
+      {#if showSummaryGen && !hideAiTools}
         <div class="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
           <!-- Tone selector -->
           <div class="space-y-2">

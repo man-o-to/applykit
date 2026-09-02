@@ -19,6 +19,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Skeleton } from '$lib/components/ui/skeleton';
 	import CvCard from '$lib/components/history/CvCard.svelte';
+	import CvVersionEditor from '$lib/components/history/CvVersionEditor.svelte';
 	import ClCard from '$lib/components/history/ClCard.svelte';
 	import ClPreviewHeader from '$lib/components/history/ClPreviewHeader.svelte';
 	import CoverLetterVersionEditor from '$lib/components/history/CoverLetterVersionEditor.svelte';
@@ -28,7 +29,7 @@
 	import type { GeneratedCVEntry, GeneratedCoverLetterEntry, ProfileData } from '$lib/types';
 	import { errorMessage, formatDate, formatDateShort, getScoreBarColor, getScoreColor } from '$lib/utils';
 	import { toastState } from '$lib/toast.svelte';
-	import { Clock, Download, FileText, Sparkles } from '@lucide/svelte';
+	import { Clock, Download, FileText, Pencil, Sparkles } from '@lucide/svelte';
 
 	type Tab = 'cv' | 'cover-letter';
 	let tab: Tab = $state('cv');
@@ -43,6 +44,7 @@
 	let selectedCv: GeneratedCVEntry | null = $state(null);
 	let cvPreviewEl: HTMLDivElement | undefined = $state(undefined);
 	let downloading = $state(false);
+	let editingCv = $state(false);
 	let selectedCl: GeneratedCoverLetterEntry | null = $state(null);
 	let previewTab = $state<'letter' | 'analysis'>('letter');
 	let editingCl = $state(false);
@@ -128,11 +130,23 @@
     editingCl = false;
   });
 
+  $effect(() => {
+    selectedCv;
+    editingCv = false;
+  });
+
   function handleClVersionSaved(updated: GeneratedCoverLetterEntry) {
     // The old head is superseded — drop it from the flat list and show the new version.
     clItems = [updated, ...clItems.filter((e) => e.id !== selectedCl?.id)];
     selectedCl = updated;
     editingCl = false;
+  }
+
+  function handleCvVersionSaved(updated: GeneratedCVEntry) {
+    // The old head is superseded — drop it from the flat list and show the new version.
+    cvItems = [updated, ...cvItems.filter((e) => e.id !== selectedCv?.id)];
+    selectedCv = updated;
+    editingCv = false;
   }
 
   async function handleDeleteCv(id: number) {
@@ -365,6 +379,11 @@
                   <Button variant="outline" size="sm" onclick={() => selectedCv && handleRegenerate(selectedCv)}>
                     <Sparkles class="w-4 h-4 mr-1" /> Regenerate
                   </Button>
+                  {#if parseCvProfile(selectedCv)}
+                    <Button variant={editingCv ? 'default' : 'outline'} size="sm" onclick={() => editingCv = !editingCv}>
+                      <Pencil class="w-4 h-4 mr-1" /> {editingCv ? 'Editing' : 'Edit'}
+                    </Button>
+                  {/if}
                   {#if confirmDeleteCvId === selectedCv.id}
                     <div class="flex items-center gap-1.5">
                       <span class="text-xs text-muted-foreground">Delete?</span>
@@ -383,7 +402,14 @@
                 </div>
               </div>
               <div class="overflow-auto max-h-[70vh]">
-                {#if parseCvProfile(selectedCv)}
+                {#if editingCv && parseCvProfile(selectedCv)}
+                  <CvVersionEditor
+                    {selectedCv}
+                    initialProfile={parseCvProfile(selectedCv)!}
+                    onSaved={handleCvVersionSaved}
+                    onCancel={() => editingCv = false}
+                  />
+                {:else if parseCvProfile(selectedCv)}
                   <CvPreview profile={parseCvProfile(selectedCv)!} />
                 {:else}
                   <p class="p-8 text-sm text-destructive">Could not parse CV snapshot.</p>
