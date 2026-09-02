@@ -13,8 +13,9 @@
 
   interface Props {
     profile: ProfileData;
+    hideAiBulletTools?: boolean;
   }
-  let { profile = $bindable() }: Props = $props();
+  let { profile = $bindable(), hideAiBulletTools = false }: Props = $props();
 
   function addWork() {
     profile.work_experience = [
@@ -174,15 +175,17 @@
           <div class="space-y-2 text-left">
             <div class="flex items-center justify-between pr-1">
               <Label class="text-xs font-bold uppercase tracking-wider text-muted-foreground">Key Accomplishments</Label>
-              <button
-                type="button"
-                onclick={() => toggleBulletGen(i)}
-                class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 text-[10px] font-bold text-primary hover:bg-primary/20 transition-all uppercase tracking-widest border border-primary/20"
-              >
-                <SparklesIcon class="w-3 h-3" />
-                AI Enhance
-                <ChevronDown class="w-3 h-3 transition-transform {activeBulletIdx === i ? 'rotate-180' : ''}" />
-              </button>
+              {#if !hideAiBulletTools}
+                <button
+                  type="button"
+                  onclick={() => toggleBulletGen(i)}
+                  class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 text-[10px] font-bold text-primary hover:bg-primary/20 transition-all uppercase tracking-widest border border-primary/20"
+                >
+                  <SparklesIcon class="w-3 h-3" />
+                  AI Enhance
+                  <ChevronDown class="w-3 h-3 transition-transform {activeBulletIdx === i ? 'rotate-180' : ''}" />
+                </button>
+              {/if}
             </div>
             <Textarea
               value={workBulletsText(work)}
