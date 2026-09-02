@@ -95,6 +95,7 @@ class GenerateCvRequest(BaseModel):
     job_description: str | None = None
     application_id: int | None = None
     extra_context: str | None = None
+    fit_context: str | None = None
 
 
 class OnboardingStatusResponse(BaseModel):

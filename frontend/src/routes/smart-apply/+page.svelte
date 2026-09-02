@@ -331,6 +331,7 @@
             job_description: scrapeResult.job_description,
             application_id: app.id,
             extra_context: cvContext || undefined,
+            fit_context: fitResult?.suggested_emphasis || null,
           });
         } catch (e: unknown) {
           toastState.error(`CV generation failed: ${errorMessage(e)}`);
@@ -347,6 +348,7 @@
             company_name: companyName || null,
             tone: clTone,
             extra_context: clContext || '',
+            fit_context: fitResult?.suggested_emphasis || null,
             job_url: inputMode === 'url' ? jobUrl.trim() || null : null,
             match_score: fitResult?.match_score ?? null,
             fit_analysis_json: fitResult ? JSON.stringify(fitResult) : null,
