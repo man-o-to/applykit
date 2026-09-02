@@ -75,6 +75,7 @@ def _enrich_cv(entry: GeneratedCV, profiles: dict) -> dict:
         "superseded_by_id": entry.superseded_by_id,
         "edit_source": entry.edit_source,
         "edit_instruction": entry.edit_instruction,
+        "edit_target_excerpt": entry.edit_target_excerpt,
     }
 
 
@@ -110,6 +111,7 @@ def _enrich_cl(entry: GeneratedCoverLetter, profiles: dict, db: Session) -> dict
         "superseded_by_id": entry.superseded_by_id,
         "edit_source": entry.edit_source,
         "edit_instruction": entry.edit_instruction,
+        "edit_target_excerpt": entry.edit_target_excerpt,
         **role_match,
     }
 
@@ -204,6 +206,7 @@ def list_cv_versions(entry_id: int, db: Session = Depends(get_db)):
                 created_at=item.created_at,
                 edit_source=item.edit_source,
                 edit_instruction=item.edit_instruction,
+                edit_target_excerpt=item.edit_target_excerpt,
             )
             for item in chain
         ]
@@ -429,6 +432,7 @@ def list_cover_letter_versions(entry_id: int, db: Session = Depends(get_db)):
                 created_at=item.created_at,
                 edit_source=item.edit_source,
                 edit_instruction=item.edit_instruction,
+                edit_target_excerpt=item.edit_target_excerpt,
             )
             for item in chain
         ]

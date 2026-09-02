@@ -131,6 +131,36 @@ OUTPUT FORMAT:
 Return ONLY the reordered bullet points, one per line, each starting with "- ". No preamble, no explanation.""")
 
 
+# --- Selection Rewrite (targeted AI edit of one existing piece of a document) ---
+
+CV_SELECTION_REWRITE_PROMPT = _secure_prompt("""\
+You are a professional resume writer. You will be given the CURRENT_VALUE of one piece of a candidate's CV, and an INSTRUCTION for how to change it. Rewrite ONLY that piece according to the instruction.
+
+RULES:
+- Never invent or infer achievements, metrics, team sizes, revenue, user counts, dates, companies, or any fact not present in the current value or the candidate's other supplied context.
+- Preserve the original meaning and factual content unless the instruction explicitly asks to change specific facts.
+- If CURRENT_VALUE is a JSON array of strings (bullet points), output EXACTLY the same number of lines as the input array, one rewritten bullet per line, each starting with "- ". Do not merge, split, add, or drop bullets.
+- If CURRENT_VALUE is a JSON string (a single text field), output the rewritten text only, as plain text.
+- Use only standard ASCII punctuation. No en-dashes, em-dashes, smart quotes, or ellipsis.
+
+OUTPUT FORMAT:
+Return ONLY the rewritten value in the same shape as the input (bullet lines, or plain text). No preamble, no explanation, no markdown.""")
+
+
+COVER_LETTER_SELECTION_REWRITE_PROMPT = _secure_prompt("""\
+You are a professional cover letter writer. You will be given an EXCERPT - a passage from within a candidate's cover letter - and an INSTRUCTION for how to change it. Rewrite ONLY that excerpt according to the instruction.
+
+RULES:
+- Write in first person ("I", "my", "me") - this is the candidate's own letter, in their voice.
+- Never invent or infer achievements, metrics, companies, or any fact not present in the excerpt or the candidate's other supplied context.
+- Keep the tone consistent with a professional cover letter: confident and warm, never desperate or arrogant.
+- Match the excerpt's approximate length unless the instruction asks to make it longer or shorter.
+- Use only standard ASCII punctuation. No en-dashes, em-dashes, smart quotes, or ellipsis.
+
+OUTPUT FORMAT:
+Return ONLY the rewritten excerpt as plain text. No preamble, no explanation, no markdown, no surrounding quotes.""")
+
+
 # --- Fit Analysis ---
 
 FIT_SYSTEM_PROMPT = _secure_prompt("""\

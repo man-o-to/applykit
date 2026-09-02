@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createCvVersion } from '$lib/api';
+  import { applyCvSelectionEdit, createCvVersion, streamCvSelectionEdit } from '$lib/api';
   import CertificationsTab from '$lib/components/profile/CertificationsTab.svelte';
   import EducationTab from '$lib/components/profile/EducationTab.svelte';
   import ExperienceTab from '$lib/components/profile/ExperienceTab.svelte';
@@ -27,6 +27,29 @@
   let saving = $state(false);
 
   const dirty = $derived(JSON.stringify(profile) !== loadedJson);
+
+  // AI selection-rewrite creates its own version immediately, based on the
+  // currently-persisted document - not this local unsaved buffer. Block it
+  // while other edits are pending so an AI rewrite can never silently
+  // discard unsaved manual changes made elsewhere in this session.
+  const aiRewrite = $derived({
+    stream: (index: number, instruction: string) =>
+      streamCvSelectionEdit(selectedCv.id, {
+        target: { section: 'work_experience' as const, index, subfield: 'bullets' },
+        instruction,
+      }),
+    apply: async (index: number, newBullets: string[], instruction: string) => {
+      const updated = await applyCvSelectionEdit(selectedCv.id, {
+        target: { section: 'work_experience' as const, index, subfield: 'bullets' },
+        new_value: newBullets,
+        instruction,
+      });
+      toastState.success('Bullets rewritten and saved as a new version.');
+      onSaved(updated);
+    },
+    disabled: dirty,
+    disabledReason: 'Save or cancel your other unsaved changes first.',
+  });
 
   const sections = [
     { id: 'personal-info', label: 'Personal Info', icon: User },
@@ -77,7 +100,7 @@
       <section class="p-6"><SkillsTab bind:profile /></section>
     {/if}
     {#if activeTab === 'experience'}
-      <section class="p-6"><ExperienceTab bind:profile hideAiBulletTools={true} /></section>
+      <section class="p-6"><ExperienceTab bind:profile onAiRewrite={aiRewrite} /></section>
     {/if}
     {#if activeTab === 'education'}
       <section class="p-6"><EducationTab bind:profile /></section>

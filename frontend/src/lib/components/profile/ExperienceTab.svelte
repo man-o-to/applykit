@@ -11,11 +11,19 @@
   import { toastState } from '$lib/toast.svelte';
   import { errorMessage } from '$lib/utils';
 
+  interface AiRewriteHandler {
+    stream: (index: number, instruction: string) => Promise<Response>;
+    apply: (index: number, newBullets: string[], instruction: string) => Promise<void>;
+    disabled?: boolean;
+    disabledReason?: string;
+  }
+
   interface Props {
     profile: ProfileData;
     hideAiBulletTools?: boolean;
+    onAiRewrite?: AiRewriteHandler;
   }
-  let { profile = $bindable(), hideAiBulletTools = false }: Props = $props();
+  let { profile = $bindable(), hideAiBulletTools = false, onAiRewrite }: Props = $props();
 
   function addWork() {
     profile.work_experience = [
@@ -45,20 +53,33 @@
   let bulletGenerating = $state(false);
   let bulletPreview = $state('');
   let bulletContext = $state('');
+  let bulletApplying = $state(false);
+  let lastInstruction = $state('');
 
   const BULLET_MODES = [
     { id: 'improve' as const, label: 'Improve Writing', desc: 'Stronger verbs & outcomes' },
     { id: 'reorganize' as const, label: 'Sort by Impact', desc: 'Most impressive first' },
   ];
 
+  const MODE_INSTRUCTIONS: Record<'improve' | 'reorganize', string> = {
+    improve: 'Rewrite these bullets to use stronger action verbs and clearer, more impactful phrasing.',
+    reorganize: 'Reorder these bullets from most impressive/highest-impact to least, lightly cleaning up wording without changing substance.',
+  };
+
   async function generateBullets(i: number) {
-    const ap = activeProfile.current;
-    if (!ap) return;
     const work = profile.work_experience[i];
     bulletGenerating = true;
     bulletPreview = '';
     try {
-      const res = await generateBulletsStream(ap.id, work.company, work.role, work.bullets, bulletMode, bulletContext || undefined);
+      let res: Response;
+      if (onAiRewrite) {
+        lastInstruction = MODE_INSTRUCTIONS[bulletMode] + (bulletContext.trim() ? ` Additional context: ${bulletContext.trim()}` : '');
+        res = await onAiRewrite.stream(i, lastInstruction);
+      } else {
+        const ap = activeProfile.current;
+        if (!ap) return;
+        res = await generateBulletsStream(ap.id, work.company, work.role, work.bullets, bulletMode, bulletContext || undefined);
+      }
       if (!res.ok) throw new Error('Generation failed');
       await consumeStream(res, {
         onChunk: (text) => { bulletPreview += text; },
@@ -73,13 +94,27 @@
     }
   }
 
-  function applyBullets(i: number) {
+  async function applyBullets(i: number) {
     const lines = bulletPreview
       .split('\n')
       .map(l => l.trim())
-      .filter(Boolean)
-      .join('\n');
-    setWorkBullets(i, lines);
+      .filter(Boolean);
+
+    if (onAiRewrite) {
+      bulletApplying = true;
+      try {
+        await onAiRewrite.apply(i, lines, lastInstruction);
+        bulletPreview = '';
+        activeBulletIdx = null;
+      } catch (e: unknown) {
+        toastState.error(`Failed to save: ${errorMessage(e)}`);
+      } finally {
+        bulletApplying = false;
+      }
+      return;
+    }
+
+    setWorkBullets(i, lines.join('\n'));
     bulletPreview = '';
     activeBulletIdx = null;
     toastState.success('Bullets applied! Remember to save.');
@@ -179,7 +214,9 @@
                 <button
                   type="button"
                   onclick={() => toggleBulletGen(i)}
-                  class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 text-[10px] font-bold text-primary hover:bg-primary/20 transition-all uppercase tracking-widest border border-primary/20"
+                  disabled={onAiRewrite?.disabled}
+                  title={onAiRewrite?.disabled ? onAiRewrite.disabledReason : undefined}
+                  class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 text-[10px] font-bold text-primary hover:bg-primary/20 transition-all uppercase tracking-widest border border-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <SparklesIcon class="w-3 h-3" />
                   AI Enhance
@@ -258,11 +295,11 @@
                     </div>
                     {#if bulletPreview && !bulletGenerating}
                       <div class="flex gap-2">
-                        <Button onclick={() => applyBullets(i)} size="sm" class="flex-1">
+                        <Button onclick={() => applyBullets(i)} disabled={bulletApplying} size="sm" class="flex-1">
                           <Check class="w-4 h-4 mr-1.5" />
-                          Apply to Entry
+                          {bulletApplying ? 'Saving…' : onAiRewrite ? 'Apply & Save Version' : 'Apply to Entry'}
                         </Button>
-                        <Button onclick={() => generateBullets(i)} variant="outline" size="sm">
+                        <Button onclick={() => generateBullets(i)} disabled={bulletApplying} variant="outline" size="sm">
                           <RefreshCw class="w-4 h-4 mr-1.5" />
                           Regenerate
                         </Button>
