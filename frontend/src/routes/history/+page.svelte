@@ -21,6 +21,7 @@
 	import CvCard from '$lib/components/history/CvCard.svelte';
 	import ClCard from '$lib/components/history/ClCard.svelte';
 	import ClPreviewHeader from '$lib/components/history/ClPreviewHeader.svelte';
+	import CoverLetterVersionEditor from '$lib/components/history/CoverLetterVersionEditor.svelte';
 	import FitAnalysisTab from '$lib/components/history/FitAnalysisTab.svelte';
 	import { STATUS_CONFIG } from '$lib/constants';
 	import { profiles } from '$lib/profiles.svelte';
@@ -44,6 +45,7 @@
 	let downloading = $state(false);
 	let selectedCl: GeneratedCoverLetterEntry | null = $state(null);
 	let previewTab = $state<'letter' | 'analysis'>('letter');
+	let editingCl = $state(false);
 
 	let clSearch = $state('');
 	let clMatchFilter = $state<'all' | 'high' | 'medium' | 'low'>('all');
@@ -123,7 +125,15 @@
 
   $effect(() => {
     if (selectedCl) previewTab = 'letter';
+    editingCl = false;
   });
+
+  function handleClVersionSaved(updated: GeneratedCoverLetterEntry) {
+    // The old head is superseded — drop it from the flat list and show the new version.
+    clItems = [updated, ...clItems.filter((e) => e.id !== selectedCl?.id)];
+    selectedCl = updated;
+    editingCl = false;
+  }
 
   async function handleDeleteCv(id: number) {
     try {
@@ -486,10 +496,12 @@
                 {downloading}
                 onCopy={handleCopyCl}
                 onDelete={() => selectedCl && (confirmDeleteClId = selectedCl.id)}
+                editing={editingCl}
+                onToggleEdit={() => editingCl = !editingCl}
               />
 
               <!-- Tab bar (only when fit_analysis available) -->
-              {#if selectedCl.fit_analysis}
+              {#if !editingCl && selectedCl.fit_analysis}
                 <div class="flex border-b border-border shrink-0 bg-background">
                   <button
                     class="px-4 py-2 text-sm font-medium transition-colors
@@ -506,7 +518,13 @@
 
               <!-- Scrollable content -->
               <div class="overflow-y-auto flex-1 bg-muted/10 relative">
-                {#if previewTab === 'letter' || !selectedCl.fit_analysis}
+                {#if editingCl}
+                  <CoverLetterVersionEditor
+                    {selectedCl}
+                    onSaved={handleClVersionSaved}
+                    onCancel={() => editingCl = false}
+                  />
+                {:else if previewTab === 'letter' || !selectedCl.fit_analysis}
                   <div class="p-6 md:p-8 max-w-4xl mx-auto">
                     <div class="bg-card border border-border/60 rounded-xl shadow-sm p-6 sm:p-8 md:p-10">
                       <CoverLetterPreview text={selectedCl.cover_letter_text} />

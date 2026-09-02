@@ -235,6 +235,30 @@ export interface GeneratedCoverLetterListResponse {
   total: number;
 }
 
+// Document versioning (manual edits)
+export interface CvManualEditRequest {
+  profile_snapshot: ProfileData;
+  edit_note?: string | null;
+}
+
+export interface CoverLetterManualEditRequest {
+  cover_letter_text: string;
+  edit_note?: string | null;
+}
+
+export interface DocumentVersionItem {
+  id: number;
+  parent_version_id: number | null;
+  superseded_by_id: number | null;
+  created_at: string;
+  edit_source: string | null;
+  edit_instruction: string | null;
+}
+
+export interface DocumentVersionsResponse {
+  items: DocumentVersionItem[];
+}
+
 // Settings
 export interface SettingsResponse {
   model: string | null;
