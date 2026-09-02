@@ -6,8 +6,14 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.exceptions import HistoryEntryNotFoundError
-from app.history.repository import delete_cl_chain, delete_cv_chain
+from app.exceptions import HistoryEntryNotFoundError, InvalidRequestError
+from app.history.repository import (
+    delete_cl_chain,
+    delete_cv_chain,
+    list_cl_chain,
+    list_cv_chain,
+)
+from app.history.snapshots import save_cover_letter_version, save_cv_version
 from app.models import Application, GeneratedCoverLetter, GeneratedCV
 from app.role_match.integration import enrich_cover_letter_role_match
 from app.role_match.product_schemas import (
@@ -16,6 +22,10 @@ from app.role_match.product_schemas import (
 )
 from app.schemas import (
     BulkDeleteRequest,
+    CoverLetterManualEditRequest,
+    CvManualEditRequest,
+    DocumentVersionItem,
+    DocumentVersionsResponse,
     GeneratedCVEntry,
     GeneratedCVListResponse,
     UpdateStatusRequest,
@@ -153,6 +163,78 @@ def update_cv_status(
     return _enrich_cv(entry, batch_load_profiles([entry], db))
 
 
+@router.post("/history/cv/{entry_id}/versions", response_model=GeneratedCVEntry)
+def create_cv_version(
+    entry_id: int, body: CvManualEditRequest, db: Session = Depends(get_db)
+):
+    parent = db.query(GeneratedCV).filter_by(id=entry_id).first()
+    if not parent:
+        raise HistoryEntryNotFoundError("CV entry", entry_id)
+    if parent.superseded_by_id is not None:
+        raise InvalidRequestError(
+            "This version has already been superseded by a newer edit. Reload to see the latest version."
+        )
+    version = save_cv_version(
+        db,
+        parent=parent,
+        profile_snapshot=body.profile_snapshot.model_dump_json(),
+        edit_source="manual",
+        edit_instruction=body.edit_note,
+    )
+    return _enrich_cv(version, batch_load_profiles([version], db))
+
+
+@router.get("/history/cv/{entry_id}/versions", response_model=DocumentVersionsResponse)
+def list_cv_versions(entry_id: int, db: Session = Depends(get_db)):
+    entry = db.query(GeneratedCV).filter_by(id=entry_id).first()
+    if not entry:
+        raise HistoryEntryNotFoundError("CV entry", entry_id)
+    chain = list_cv_chain(db, entry)
+    return DocumentVersionsResponse(
+        items=[
+            DocumentVersionItem(
+                id=item.id,
+                parent_version_id=item.parent_version_id,
+                superseded_by_id=item.superseded_by_id,
+                created_at=item.created_at,
+                edit_source=item.edit_source,
+                edit_instruction=item.edit_instruction,
+            )
+            for item in chain
+        ]
+    )
+
+
+@router.post(
+    "/history/cv/{entry_id}/versions/{target_id}/revert",
+    response_model=GeneratedCVEntry,
+)
+def revert_cv_version(entry_id: int, target_id: int, db: Session = Depends(get_db)):
+    entry = db.query(GeneratedCV).filter_by(id=entry_id).first()
+    if not entry:
+        raise HistoryEntryNotFoundError("CV entry", entry_id)
+    if entry.superseded_by_id is not None:
+        raise InvalidRequestError(
+            "This version has already been superseded by a newer edit. Reload to see the latest version."
+        )
+    target = db.query(GeneratedCV).filter_by(id=target_id).first()
+    if not target:
+        raise HistoryEntryNotFoundError("CV entry", target_id)
+    chain_ids = {item.id for item in list_cv_chain(db, entry)}
+    if target_id not in chain_ids:
+        raise InvalidRequestError(
+            "The requested version does not belong to this document's history."
+        )
+    version = save_cv_version(
+        db,
+        parent=entry,
+        profile_snapshot=target.profile_snapshot,
+        edit_source="restore",
+        edit_instruction=f"Restored from a version created at {target.created_at.isoformat()}",
+    )
+    return _enrich_cv(version, batch_load_profiles([version], db))
+
+
 # --- Cover letter history ---
 
 
@@ -274,6 +356,86 @@ def update_cover_letter_status(
             entry.application_id = app.id
     db.commit()
     return _enrich_cl(entry, batch_load_profiles([entry], db), db)
+
+
+@router.post(
+    "/history/cover-letter/{entry_id}/versions",
+    response_model=RoleMatchGeneratedCoverLetterEntry,
+)
+def create_cover_letter_version(
+    entry_id: int, body: CoverLetterManualEditRequest, db: Session = Depends(get_db)
+):
+    parent = db.query(GeneratedCoverLetter).filter_by(id=entry_id).first()
+    if not parent:
+        raise HistoryEntryNotFoundError("Cover letter", entry_id)
+    if parent.superseded_by_id is not None:
+        raise InvalidRequestError(
+            "This version has already been superseded by a newer edit. Reload to see the latest version."
+        )
+    version = save_cover_letter_version(
+        db,
+        parent=parent,
+        cover_letter_text=body.cover_letter_text,
+        edit_source="manual",
+        edit_instruction=body.edit_note,
+    )
+    return _enrich_cl(version, batch_load_profiles([version], db), db)
+
+
+@router.get(
+    "/history/cover-letter/{entry_id}/versions",
+    response_model=DocumentVersionsResponse,
+)
+def list_cover_letter_versions(entry_id: int, db: Session = Depends(get_db)):
+    entry = db.query(GeneratedCoverLetter).filter_by(id=entry_id).first()
+    if not entry:
+        raise HistoryEntryNotFoundError("Cover letter", entry_id)
+    chain = list_cl_chain(db, entry)
+    return DocumentVersionsResponse(
+        items=[
+            DocumentVersionItem(
+                id=item.id,
+                parent_version_id=item.parent_version_id,
+                superseded_by_id=item.superseded_by_id,
+                created_at=item.created_at,
+                edit_source=item.edit_source,
+                edit_instruction=item.edit_instruction,
+            )
+            for item in chain
+        ]
+    )
+
+
+@router.post(
+    "/history/cover-letter/{entry_id}/versions/{target_id}/revert",
+    response_model=RoleMatchGeneratedCoverLetterEntry,
+)
+def revert_cover_letter_version(
+    entry_id: int, target_id: int, db: Session = Depends(get_db)
+):
+    entry = db.query(GeneratedCoverLetter).filter_by(id=entry_id).first()
+    if not entry:
+        raise HistoryEntryNotFoundError("Cover letter", entry_id)
+    if entry.superseded_by_id is not None:
+        raise InvalidRequestError(
+            "This version has already been superseded by a newer edit. Reload to see the latest version."
+        )
+    target = db.query(GeneratedCoverLetter).filter_by(id=target_id).first()
+    if not target:
+        raise HistoryEntryNotFoundError("Cover letter", target_id)
+    chain_ids = {item.id for item in list_cl_chain(db, entry)}
+    if target_id not in chain_ids:
+        raise InvalidRequestError(
+            "The requested version does not belong to this document's history."
+        )
+    version = save_cover_letter_version(
+        db,
+        parent=entry,
+        cover_letter_text=target.cover_letter_text,
+        edit_source="restore",
+        edit_instruction=f"Restored from a version created at {target.created_at.isoformat()}",
+    )
+    return _enrich_cl(version, batch_load_profiles([version], db), db)
 
 
 @router.delete("/history/cover-letter")
