@@ -49,11 +49,26 @@ OPERATION_COVER_LETTER_SELECTION_EDIT = "cover_letter_selection_edit"
 # ---------------------------------------------------------------------------
 
 
-def _prepare_messages(prompt: str, system: str | None = None) -> list[dict]:
-    """Build the messages list from a user prompt and optional system prompt."""
+# Hard cap on prior turns forwarded to the model, independent of how long a
+# stored conversation transcript grows. Bounds per-call token cost; callers
+# that need a tighter window (e.g. a chat session's own turn limit) apply
+# their own cap before this one ever kicks in.
+MAX_HISTORY_MESSAGES = 40
+
+
+def _prepare_messages(
+    prompt: str,
+    system: str | None = None,
+    history: list[dict] | None = None,
+) -> list[dict]:
+    """Build the messages list: system, then prior history, then the current
+    prompt as the final user turn. `history` is additive and optional - a
+    caller that never passes it gets the exact same messages as before."""
     messages: list[dict] = []
     if system:
         messages.append({"role": "system", "content": system})
+    if history:
+        messages.extend(history[-MAX_HISTORY_MESSAGES:])
     messages.append({"role": "user", "content": prompt})
     return messages
 
@@ -289,6 +304,7 @@ def _record_completion_usage(
 def call_llm(
     prompt: str,
     system: str | None = None,
+    history: list[dict] | None = None,
     timeout: int = 30,
     provider: str = "",
     api_key: str = "",
@@ -303,7 +319,7 @@ def call_llm(
             "LLM not configured. Set provider and API key in Settings."
         )
 
-    messages = _prepare_messages(prompt, system)
+    messages = _prepare_messages(prompt, system, history)
     started_at = time.time()
     rotation_db, owns_rotation_db = _open_rotation_session(provider, credential_db)
     provider_id = provider_from_model(provider)
@@ -432,6 +448,7 @@ def _record_stream_usage(
 async def stream_llm(
     prompt: str,
     system: str | None = None,
+    history: list[dict] | None = None,
     provider: str = "",
     api_key: str = "",
     operation: str | None = None,
@@ -445,7 +462,7 @@ async def stream_llm(
             "LLM not configured. Set provider and API key in Settings."
         )
 
-    messages = _prepare_messages(prompt, system)
+    messages = _prepare_messages(prompt, system, history)
     started_at = time.time()
     rotation_db, owns_rotation_db = _open_rotation_session(provider, credential_db)
     provider_id = provider_from_model(provider)
