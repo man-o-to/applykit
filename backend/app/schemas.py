@@ -186,6 +186,10 @@ class GeneratedCVEntry(BaseModel):
     profile_label: str | None = None
     profile_color: str | None = None
     profile_icon: str | None = None
+    parent_version_id: int | None = None
+    superseded_by_id: int | None = None
+    edit_source: str | None = None
+    edit_instruction: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -215,6 +219,10 @@ class GeneratedCoverLetterEntry(BaseModel):
     profile_label: str | None = None
     profile_color: str | None = None
     profile_icon: str | None = None
+    parent_version_id: int | None = None
+    superseded_by_id: int | None = None
+    edit_source: str | None = None
+    edit_instruction: str | None = None
 
     model_config = {"from_attributes": True}
 

@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.exceptions import HistoryEntryNotFoundError
+from app.history.repository import delete_cl_chain, delete_cv_chain
 from app.models import Application, GeneratedCoverLetter, GeneratedCV
 from app.role_match.integration import enrich_cover_letter_role_match
 from app.role_match.product_schemas import (
@@ -55,6 +56,10 @@ def _enrich_cv(entry: GeneratedCV, profiles: dict) -> dict:
         "profile_label": p.label if p else None,
         "profile_color": p.color if p else None,
         "profile_icon": p.icon if p else None,
+        "parent_version_id": entry.parent_version_id,
+        "superseded_by_id": entry.superseded_by_id,
+        "edit_source": entry.edit_source,
+        "edit_instruction": entry.edit_instruction,
     }
 
 
@@ -86,6 +91,10 @@ def _enrich_cl(entry: GeneratedCoverLetter, profiles: dict, db: Session) -> dict
         "profile_label": p.label if p else None,
         "profile_color": p.color if p else None,
         "profile_icon": p.icon if p else None,
+        "parent_version_id": entry.parent_version_id,
+        "superseded_by_id": entry.superseded_by_id,
+        "edit_source": entry.edit_source,
+        "edit_instruction": entry.edit_instruction,
         **role_match,
     }
 
@@ -101,7 +110,7 @@ def list_cv_history(
     limit: int = Query(default=20),
     offset: int = Query(default=0),
 ):
-    q = db.query(GeneratedCV)
+    q = db.query(GeneratedCV).filter(GeneratedCV.superseded_by_id.is_(None))
     if profile_id is not None:
         q = q.filter(GeneratedCV.profile_id == profile_id)
     if sort == "date_asc":
@@ -129,8 +138,7 @@ def delete_cv_history_entry(entry_id: int, db: Session = Depends(get_db)):
     entry = db.query(GeneratedCV).filter_by(id=entry_id).first()
     if not entry:
         raise HistoryEntryNotFoundError("CV entry", entry_id)
-    db.delete(entry)
-    db.commit()
+    delete_cv_chain(db, entry_id)
 
 
 @router.patch("/history/cv/{entry_id}/status", response_model=GeneratedCVEntry)
@@ -163,7 +171,9 @@ def list_cover_letter_history(
     limit: int = Query(default=20),
     offset: int = Query(default=0),
 ):
-    q = db.query(GeneratedCoverLetter)
+    q = db.query(GeneratedCoverLetter).filter(
+        GeneratedCoverLetter.superseded_by_id.is_(None)
+    )
     if profile_id is not None:
         q = q.filter(GeneratedCoverLetter.profile_id == profile_id)
     if search:
@@ -227,8 +237,7 @@ def delete_cover_letter_history_entry(entry_id: int, db: Session = Depends(get_d
     entry = db.query(GeneratedCoverLetter).filter_by(id=entry_id).first()
     if not entry:
         raise HistoryEntryNotFoundError("Cover letter", entry_id)
-    db.delete(entry)
-    db.commit()
+    delete_cl_chain(db, entry_id)
 
 
 @router.patch(
@@ -269,21 +278,14 @@ def update_cover_letter_status(
 
 @router.delete("/history/cover-letter")
 def bulk_delete_cover_letters(body: BulkDeleteRequest, db: Session = Depends(get_db)):
-    deleted = (
-        db.query(GeneratedCoverLetter)
-        .filter(GeneratedCoverLetter.id.in_(body.ids))
-        .delete(synchronize_session=False)
-    )
-    db.commit()
+    # Chain-delete each requested entry individually rather than a single
+    # IN-clause delete, so any other versions in each entry's chain (not
+    # necessarily listed in body.ids) are cleaned up too.
+    deleted = sum(delete_cl_chain(db, entry_id) for entry_id in body.ids)
     return {"deleted": deleted}
 
 
 @router.delete("/history/cv")
 def bulk_delete_cvs(body: BulkDeleteRequest, db: Session = Depends(get_db)):
-    deleted = (
-        db.query(GeneratedCV)
-        .filter(GeneratedCV.id.in_(body.ids))
-        .delete(synchronize_session=False)
-    )
-    db.commit()
+    deleted = sum(delete_cv_chain(db, entry_id) for entry_id in body.ids)
     return {"deleted": deleted}
