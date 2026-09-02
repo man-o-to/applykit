@@ -193,6 +193,10 @@ export interface GeneratedCVEntry {
   profile_label: string | null;
   profile_color: string | null;
   profile_icon: string | null;
+  parent_version_id: number | null;
+  superseded_by_id: number | null;
+  edit_source: string | null;
+  edit_instruction: string | null;
 }
 
 export interface GeneratedCVListResponse {
@@ -220,6 +224,10 @@ export interface GeneratedCoverLetterEntry {
   profile_label: string | null;
   profile_color: string | null;
   profile_icon: string | null;
+  parent_version_id: number | null;
+  superseded_by_id: number | null;
+  edit_source: string | null;
+  edit_instruction: string | null;
 }
 
 export interface GeneratedCoverLetterListResponse {

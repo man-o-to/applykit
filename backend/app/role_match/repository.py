@@ -23,6 +23,7 @@ from app.role_match.models import (
     RoleMatchOverride,
     RoleMatchRequirement,
 )
+from app.services.version_chain import walk_version_chain
 
 
 def get_analysis(db: Session, analysis_id: int) -> RoleMatchAnalysis | None:
@@ -156,25 +157,9 @@ def list_versions(
     db: Session,
     analysis: RoleMatchAnalysis,
 ) -> RoleMatchVersionsResponse:
-    root = analysis
-    seen: set[int] = set()
-    while root.parent_analysis_id and root.id not in seen:
-        seen.add(root.id)
-        parent = get_analysis(db, root.parent_analysis_id)
-        if parent is None:
-            break
-        root = parent
-    items: list[RoleMatchAnalysis] = []
-    frontier = [root]
-    while frontier:
-        current = frontier.pop(0)
-        items.append(current)
-        frontier.extend(
-            db.query(RoleMatchAnalysis)
-            .filter_by(parent_analysis_id=current.id)
-            .order_by(RoleMatchAnalysis.created_at.asc())
-            .all()
-        )
+    items = walk_version_chain(
+        db, RoleMatchAnalysis, analysis, parent_col="parent_analysis_id"
+    )
     return RoleMatchVersionsResponse(
         items=[
             RoleMatchVersionItem(

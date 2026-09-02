@@ -60,6 +60,18 @@ class GeneratedCV(Base):
         Integer, ForeignKey("application.id", ondelete="SET NULL"), nullable=True
     )
     application_status = Column(String, nullable=True, default=None)
+    # Versioning: mirrors role_match_analysis's parent_analysis_id/
+    # superseded_by_id. No "is_current" flag - the head of a chain is
+    # whichever row has superseded_by_id IS NULL.
+    parent_version_id = Column(
+        Integer, ForeignKey("generated_cv.id", ondelete="SET NULL"), nullable=True
+    )
+    superseded_by_id = Column(
+        Integer, ForeignKey("generated_cv.id", ondelete="SET NULL"), nullable=True
+    )
+    edit_source = Column(String, nullable=True)  # manual | ai_selection | ai_chat | restore
+    edit_instruction = Column(Text, nullable=True)
+    edit_target_excerpt = Column(Text, nullable=True)
 
 
 class GeneratedCoverLetter(Base):
@@ -85,6 +97,20 @@ class GeneratedCoverLetter(Base):
     fit_analysis = Column(Text, nullable=True)  # JSON string of FitAnalysisResponse
     tone = Column(String, nullable=False, default="professional")
     application_status = Column(String, nullable=True, default=None)
+    # Versioning: same pattern as GeneratedCV above.
+    parent_version_id = Column(
+        Integer,
+        ForeignKey("generated_cover_letter.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    superseded_by_id = Column(
+        Integer,
+        ForeignKey("generated_cover_letter.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    edit_source = Column(String, nullable=True)
+    edit_instruction = Column(Text, nullable=True)
+    edit_target_excerpt = Column(Text, nullable=True)
 
 
 class Application(Base):
