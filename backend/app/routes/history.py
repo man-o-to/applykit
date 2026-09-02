@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.exceptions import HistoryEntryNotFoundError, InvalidRequestError
+from app.history.compare import diff_json_values, diff_text_lines
 from app.history.repository import (
     delete_cl_chain,
     delete_cv_chain,
@@ -22,7 +23,11 @@ from app.role_match.product_schemas import (
 )
 from app.schemas import (
     BulkDeleteRequest,
+    CoverLetterComparisonResponse,
+    CoverLetterLineDiffEntry,
     CoverLetterManualEditRequest,
+    CvComparisonResponse,
+    CvFieldChange,
     CvManualEditRequest,
     DocumentVersionItem,
     DocumentVersionsResponse,
@@ -235,6 +240,30 @@ def revert_cv_version(entry_id: int, target_id: int, db: Session = Depends(get_d
     return _enrich_cv(version, batch_load_profiles([version], db))
 
 
+@router.get(
+    "/history/cv/{entry_id}/compare/{other_id}",
+    response_model=CvComparisonResponse,
+)
+def compare_cv_versions(entry_id: int, other_id: int, db: Session = Depends(get_db)):
+    before = db.query(GeneratedCV).filter_by(id=entry_id).first()
+    if not before:
+        raise HistoryEntryNotFoundError("CV entry", entry_id)
+    after = db.query(GeneratedCV).filter_by(id=other_id).first()
+    if not after:
+        raise HistoryEntryNotFoundError("CV entry", other_id)
+    changes = diff_json_values(
+        json.loads(before.profile_snapshot), json.loads(after.profile_snapshot)
+    )
+    return CvComparisonResponse(
+        from_version_id=before.id,
+        to_version_id=after.id,
+        changed_fields=[
+            CvFieldChange(path=c["path"], from_value=c["from"], to_value=c["to"])
+            for c in changes
+        ],
+    )
+
+
 # --- Cover letter history ---
 
 
@@ -436,6 +465,27 @@ def revert_cover_letter_version(
         edit_instruction=f"Restored from a version created at {target.created_at.isoformat()}",
     )
     return _enrich_cl(version, batch_load_profiles([version], db), db)
+
+
+@router.get(
+    "/history/cover-letter/{entry_id}/compare/{other_id}",
+    response_model=CoverLetterComparisonResponse,
+)
+def compare_cover_letter_versions(
+    entry_id: int, other_id: int, db: Session = Depends(get_db)
+):
+    before = db.query(GeneratedCoverLetter).filter_by(id=entry_id).first()
+    if not before:
+        raise HistoryEntryNotFoundError("Cover letter", entry_id)
+    after = db.query(GeneratedCoverLetter).filter_by(id=other_id).first()
+    if not after:
+        raise HistoryEntryNotFoundError("Cover letter", other_id)
+    diff = diff_text_lines(before.cover_letter_text, after.cover_letter_text)
+    return CoverLetterComparisonResponse(
+        from_version_id=before.id,
+        to_version_id=after.id,
+        diff=[CoverLetterLineDiffEntry(**entry) for entry in diff],
+    )
 
 
 @router.delete("/history/cover-letter")

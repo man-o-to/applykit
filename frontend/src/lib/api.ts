@@ -3,6 +3,7 @@ import type {
     ApplicationEntry,
     ApplicationFilters,
     ApplicationListResponse,
+    CoverLetterComparisonResponse,
     CoverLetterHistoryFilters,
     CoverLetterManualEditRequest,
     CoverLetterPdfRequest,
@@ -10,6 +11,7 @@ import type {
     CoverLetterResponse,
     CreateApplicationRequest,
     CreateProfileRequest,
+    CvComparisonResponse,
     CvHistoryFilters,
     CvManualEditRequest,
     CvPdfRequest,
@@ -263,6 +265,12 @@ export const revertCoverLetterVersion = (id: number, targetId: number) =>
     request<GeneratedCoverLetterEntry>(`/history/cover-letter/${id}/versions/${targetId}/revert`, {
         method: 'POST',
     });
+
+export const compareCvVersions = (id: number, otherId: number) =>
+    request<CvComparisonResponse>(`/history/cv/${id}/compare/${otherId}`);
+
+export const compareCoverLetterVersions = (id: number, otherId: number) =>
+    request<CoverLetterComparisonResponse>(`/history/cover-letter/${id}/compare/${otherId}`);
 
 export const getSettings = () =>
     request<SettingsResponse>('/settings');

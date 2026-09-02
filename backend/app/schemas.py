@@ -1,6 +1,6 @@
 from datetime import date, datetime
 from enum import Enum
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -256,6 +256,30 @@ class DocumentVersionItem(BaseModel):
 
 class DocumentVersionsResponse(BaseModel):
     items: list[DocumentVersionItem]
+
+
+class CvFieldChange(BaseModel):
+    path: str
+    from_value: Any = None
+    to_value: Any = None
+
+
+class CvComparisonResponse(BaseModel):
+    from_version_id: int
+    to_version_id: int
+    changed_fields: list[CvFieldChange]
+
+
+class CoverLetterLineDiffEntry(BaseModel):
+    op: Literal["insert", "delete", "replace"]
+    from_lines: list[str]
+    to_lines: list[str]
+
+
+class CoverLetterComparisonResponse(BaseModel):
+    from_version_id: int
+    to_version_id: int
+    diff: list[CoverLetterLineDiffEntry]
 
 
 # --- Settings schemas ---
