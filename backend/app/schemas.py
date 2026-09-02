@@ -232,6 +232,32 @@ class GeneratedCoverLetterListResponse(BaseModel):
     total: int
 
 
+# --- Document versioning (manual edits) ---
+
+
+class CvManualEditRequest(BaseModel):
+    profile_snapshot: ProfileData
+    edit_note: str | None = None
+
+
+class CoverLetterManualEditRequest(BaseModel):
+    cover_letter_text: str
+    edit_note: str | None = None
+
+
+class DocumentVersionItem(BaseModel):
+    id: int
+    parent_version_id: int | None
+    superseded_by_id: int | None
+    created_at: datetime
+    edit_source: str | None
+    edit_instruction: str | None
+
+
+class DocumentVersionsResponse(BaseModel):
+    items: list[DocumentVersionItem]
+
+
 # --- Settings schemas ---
 
 

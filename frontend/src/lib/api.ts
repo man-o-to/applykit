@@ -4,13 +4,16 @@ import type {
     ApplicationFilters,
     ApplicationListResponse,
     CoverLetterHistoryFilters,
+    CoverLetterManualEditRequest,
     CoverLetterPdfRequest,
     CoverLetterRequest,
     CoverLetterResponse,
     CreateApplicationRequest,
     CreateProfileRequest,
     CvHistoryFilters,
+    CvManualEditRequest,
     CvPdfRequest,
+    DocumentVersionsResponse,
     FitAnalysisResponse,
     GenerateCvRequest,
     GenerateCvResponse,
@@ -229,6 +232,36 @@ export const bulkDeleteCoverLetters = (ids: number[]) =>
     request<{ deleted: number }>('/history/cover-letter', {
         method: 'DELETE',
         body: JSON.stringify({ ids }),
+    });
+
+// --- Document versioning (manual edits) ---
+
+export const createCvVersion = (id: number, data: CvManualEditRequest) =>
+    request<GeneratedCVEntry>(`/history/cv/${id}/versions`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+    });
+
+export const getCvVersions = (id: number) =>
+    request<DocumentVersionsResponse>(`/history/cv/${id}/versions`);
+
+export const revertCvVersion = (id: number, targetId: number) =>
+    request<GeneratedCVEntry>(`/history/cv/${id}/versions/${targetId}/revert`, {
+        method: 'POST',
+    });
+
+export const createCoverLetterVersion = (id: number, data: CoverLetterManualEditRequest) =>
+    request<GeneratedCoverLetterEntry>(`/history/cover-letter/${id}/versions`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+    });
+
+export const getCoverLetterVersions = (id: number) =>
+    request<DocumentVersionsResponse>(`/history/cover-letter/${id}/versions`);
+
+export const revertCoverLetterVersion = (id: number, targetId: number) =>
+    request<GeneratedCoverLetterEntry>(`/history/cover-letter/${id}/versions/${targetId}/revert`, {
+        method: 'POST',
     });
 
 export const getSettings = () =>

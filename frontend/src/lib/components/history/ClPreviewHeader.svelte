@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Button } from '$lib/components/ui/button';
   import ScoreRing from '$lib/components/ScoreRing.svelte';
-  import { Download, X } from '@lucide/svelte';
+  import { Download, Pencil, X } from '@lucide/svelte';
   import { formatDate } from '$lib/utils';
   import { goto } from '$app/navigation';
   import type { GeneratedCoverLetterEntry } from '$lib/types';
@@ -16,9 +16,11 @@
     downloading: boolean;
     onCopy: () => void;
     onDelete: () => void;
+    editing?: boolean;
+    onToggleEdit?: () => void;
   }
 
-  let { selectedCl, onClose, onDownload, downloading, onCopy, onDelete }: Props = $props();
+  let { selectedCl, onClose, onDownload, downloading, onCopy, onDelete, editing = false, onToggleEdit }: Props = $props();
 
   const STATUS_PIPELINE = Object.entries(STATUS_CONFIG).map(([value, config]) => ({
     value,
@@ -93,6 +95,12 @@
         {downloading ? 'PDF...' : 'PDF'}
       </Button>
       <Button variant="outline" size="sm" class="h-8 text-xs font-bold" onclick={onCopy}>Copy</Button>
+      {#if onToggleEdit}
+        <Button variant={editing ? 'default' : 'outline'} size="sm" class="h-8 text-xs font-bold" onclick={onToggleEdit}>
+          <Pencil class="w-3.5 h-3.5 mr-1.5" />
+          {editing ? 'Editing' : 'Edit'}
+        </Button>
+      {/if}
       {#if confirmingDelete}
         <div class="flex items-center gap-1.5">
           <span class="text-xs text-muted-foreground">Delete?</span>
