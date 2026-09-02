@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Button } from '$lib/components/ui/button';
   import ScoreRing from '$lib/components/ScoreRing.svelte';
-  import { Download, Pencil, X } from '@lucide/svelte';
+  import { Download, History, Pencil, X } from '@lucide/svelte';
   import { formatDate } from '$lib/utils';
   import { goto } from '$app/navigation';
   import type { GeneratedCoverLetterEntry } from '$lib/types';
@@ -18,9 +18,22 @@
     onDelete: () => void;
     editing?: boolean;
     onToggleEdit?: () => void;
+    showVersionHistory?: boolean;
+    onToggleVersionHistory?: () => void;
   }
 
-  let { selectedCl, onClose, onDownload, downloading, onCopy, onDelete, editing = false, onToggleEdit }: Props = $props();
+  let {
+    selectedCl,
+    onClose,
+    onDownload,
+    downloading,
+    onCopy,
+    onDelete,
+    editing = false,
+    onToggleEdit,
+    showVersionHistory = false,
+    onToggleVersionHistory,
+  }: Props = $props();
 
   const STATUS_PIPELINE = Object.entries(STATUS_CONFIG).map(([value, config]) => ({
     value,
@@ -99,6 +112,17 @@
         <Button variant={editing ? 'default' : 'outline'} size="sm" class="h-8 text-xs font-bold" onclick={onToggleEdit}>
           <Pencil class="w-3.5 h-3.5 mr-1.5" />
           {editing ? 'Editing' : 'Edit'}
+        </Button>
+      {/if}
+      {#if onToggleVersionHistory}
+        <Button
+          variant={showVersionHistory ? 'default' : 'outline'}
+          size="sm"
+          class="h-8 text-xs font-bold"
+          onclick={onToggleVersionHistory}
+        >
+          <History class="w-3.5 h-3.5 mr-1.5" />
+          Version history
         </Button>
       {/if}
       {#if confirmingDelete}

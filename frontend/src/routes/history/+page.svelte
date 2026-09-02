@@ -20,6 +20,7 @@
 	import { Skeleton } from '$lib/components/ui/skeleton';
 	import CvCard from '$lib/components/history/CvCard.svelte';
 	import CvVersionEditor from '$lib/components/history/CvVersionEditor.svelte';
+	import DocumentVersionPanel from '$lib/components/history/DocumentVersionPanel.svelte';
 	import ClCard from '$lib/components/history/ClCard.svelte';
 	import ClPreviewHeader from '$lib/components/history/ClPreviewHeader.svelte';
 	import CoverLetterVersionEditor from '$lib/components/history/CoverLetterVersionEditor.svelte';
@@ -29,7 +30,7 @@
 	import type { GeneratedCVEntry, GeneratedCoverLetterEntry, ProfileData } from '$lib/types';
 	import { errorMessage, formatDate, formatDateShort, getScoreBarColor, getScoreColor } from '$lib/utils';
 	import { toastState } from '$lib/toast.svelte';
-	import { Clock, Download, FileText, Pencil, Sparkles } from '@lucide/svelte';
+	import { Clock, Download, FileText, History, Pencil, Sparkles } from '@lucide/svelte';
 
 	type Tab = 'cv' | 'cover-letter';
 	let tab: Tab = $state('cv');
@@ -45,9 +46,11 @@
 	let cvPreviewEl: HTMLDivElement | undefined = $state(undefined);
 	let downloading = $state(false);
 	let editingCv = $state(false);
+	let showCvVersionHistory = $state(false);
 	let selectedCl: GeneratedCoverLetterEntry | null = $state(null);
 	let previewTab = $state<'letter' | 'analysis'>('letter');
 	let editingCl = $state(false);
+	let showClVersionHistory = $state(false);
 
 	let clSearch = $state('');
 	let clMatchFilter = $state<'all' | 'high' | 'medium' | 'low'>('all');
@@ -384,6 +387,13 @@
                       <Pencil class="w-4 h-4 mr-1" /> {editingCv ? 'Editing' : 'Edit'}
                     </Button>
                   {/if}
+                  <Button
+                    variant={showCvVersionHistory ? 'default' : 'outline'}
+                    size="sm"
+                    onclick={() => showCvVersionHistory = !showCvVersionHistory}
+                  >
+                    <History class="w-4 h-4 mr-1" /> Version history
+                  </Button>
                   {#if confirmDeleteCvId === selectedCv.id}
                     <div class="flex items-center gap-1.5">
                       <span class="text-xs text-muted-foreground">Delete?</span>
@@ -401,6 +411,15 @@
                   {/if}
                 </div>
               </div>
+              {#if showCvVersionHistory}
+                <div class="p-3 border-b bg-muted/10">
+                  <DocumentVersionPanel
+                    documentType="cv"
+                    entryId={selectedCv.id}
+                    onRestored={(updated) => handleCvVersionSaved(updated as GeneratedCVEntry)}
+                  />
+                </div>
+              {/if}
               <div class="overflow-auto max-h-[70vh]">
                 {#if editingCv && parseCvProfile(selectedCv)}
                   <CvVersionEditor
@@ -524,7 +543,19 @@
                 onDelete={() => selectedCl && (confirmDeleteClId = selectedCl.id)}
                 editing={editingCl}
                 onToggleEdit={() => editingCl = !editingCl}
+                showVersionHistory={showClVersionHistory}
+                onToggleVersionHistory={() => showClVersionHistory = !showClVersionHistory}
               />
+
+              {#if showClVersionHistory}
+                <div class="p-3 border-b border-border bg-muted/10 shrink-0">
+                  <DocumentVersionPanel
+                    documentType="cover-letter"
+                    entryId={selectedCl.id}
+                    onRestored={(updated) => handleClVersionSaved(updated as GeneratedCoverLetterEntry)}
+                  />
+                </div>
+              {/if}
 
               <!-- Tab bar (only when fit_analysis available) -->
               {#if !editingCl && selectedCl.fit_analysis}

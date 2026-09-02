@@ -259,6 +259,30 @@ export interface DocumentVersionsResponse {
   items: DocumentVersionItem[];
 }
 
+export interface CvFieldChange {
+  path: string;
+  from_value: unknown;
+  to_value: unknown;
+}
+
+export interface CvComparisonResponse {
+  from_version_id: number;
+  to_version_id: number;
+  changed_fields: CvFieldChange[];
+}
+
+export interface CoverLetterLineDiffEntry {
+  op: 'insert' | 'delete' | 'replace';
+  from_lines: string[];
+  to_lines: string[];
+}
+
+export interface CoverLetterComparisonResponse {
+  from_version_id: number;
+  to_version_id: number;
+  diff: CoverLetterLineDiffEntry[];
+}
+
 // Settings
 export interface SettingsResponse {
   model: string | null;
