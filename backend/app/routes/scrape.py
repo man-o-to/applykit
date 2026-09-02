@@ -88,6 +88,8 @@ async def scrape_analyze(
             role_title = scraped.role_title or parsed.role_title
             location = scraped.location or parsed.location
             salary = scraped.salary or parsed.salary
+            min_salary = scraped.min_salary if scraped.min_salary is not None else parsed.min_salary
+            max_salary = scraped.max_salary if scraped.max_salary is not None else parsed.max_salary
         else:
             job_description = body.text or ""
             parsed = parse_job_description(job_description, provider, api_key)
@@ -95,14 +97,16 @@ async def scrape_analyze(
             role_title = parsed.role_title
             location = parsed.location
             salary = parsed.salary
+            min_salary = parsed.min_salary
+            max_salary = parsed.max_salary
 
         return ScrapeAnalyzeResponse(
             company_name=company_name,
             role_title=role_title,
             location=location,
             salary=salary,
-            min_salary=parsed.min_salary,
-            max_salary=parsed.max_salary,
+            min_salary=min_salary,
+            max_salary=max_salary,
             job_description=job_description,
             source=source,
         )

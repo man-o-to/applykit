@@ -27,6 +27,8 @@ class ScrapedJob:
     location: str | None
     salary: str | None
     source: Literal["greenhouse_api", "lever_api", "ashby_api", "jina", "crawl4ai"]
+    min_salary: int | None = None
+    max_salary: int | None = None
 
 
 def _is_challenge_page(text: str) -> bool:
@@ -124,31 +126,63 @@ async def _scrape_lever(url: str, client: httpx.AsyncClient) -> ScrapedJob:
     )
 
 
+def _ashby_compensation(
+    compensation: dict | None,
+) -> tuple[int | None, int | None, str | None]:
+    """Pull a USD salary range and a display summary out of Ashby's
+    compensation payload, when the posting has one."""
+    if not compensation:
+        return None, None, None
+    salary_text = compensation.get("scrapeableCompensationSalarySummary") or compensation.get(
+        "compensationTierSummary"
+    )
+    for component in compensation.get("summaryComponents", []):
+        if component.get("compensationType") == "Salary" and component.get("currencyCode") == "USD":
+            return component.get("minValue"), component.get("maxValue"), salary_text
+    return None, None, salary_text
+
+
 async def _scrape_ashby(url: str, client: httpx.AsyncClient) -> ScrapedJob:
-    """Extract job info from Ashby URL using their public API."""
-    match = re.search(r"ashbyhq\.com/(?:careers/)?([^/]+)/jobs/([a-f0-9-]+)", url)
+    """Extract job info from Ashby's public job-board API.
+
+    Ashby job URLs are ashbyhq.com/{company}/{jobId} - no /jobs/ segment.
+    The public API has no per-job endpoint; it returns a company's whole
+    board, so the target job is found by ID client-side.
+    """
+    match = re.search(r"ashbyhq\.com/(?:careers/)?([^/]+)/([a-f0-9-]{36})", url)
     if not match:
         raise ValueError("Could not parse Ashby URL")
     company, job_id = match.group(1), match.group(2)
     if company in ("jobs", "careers"):
         raise ValueError("Could not determine Ashby company name from URL")
-    api_url = f"https://api.ashbyhq.com/v2/{company}/jobs/{job_id}"
+    api_url = f"https://api.ashbyhq.com/posting-api/job-board/{company}?includeCompensation=true"
 
     r = await client.get(api_url, timeout=10)
     r.raise_for_status()
     data = r.json()
 
-    job_data = data.get("job", {})
-    content = _strip_html(job_data.get("description", "") or job_data.get("body", ""))
+    job_data = next(
+        (job for job in data.get("jobs", []) if job.get("id") == job_id), None
+    )
+    if job_data is None:
+        raise ValueError("Job not found on Ashby board")
+
     title = job_data.get("title", "")
-    location = job_data.get("location", "")
+    content = job_data.get("descriptionPlain") or _strip_html(
+        job_data.get("descriptionHtml", "")
+    )
+    location = job_data.get("location")
     jd = f"{title}\n\n{content}".strip()
+    min_salary, max_salary, salary_text = _ashby_compensation(job_data.get("compensation"))
+
     return ScrapedJob(
         job_description=jd,
         company_name=company.replace("-", " ").title(),
         role_title=title,
         location=location,
-        salary=None,
+        salary=salary_text,
+        min_salary=min_salary,
+        max_salary=max_salary,
         source="ashby_api",
     )
 
