@@ -197,6 +197,7 @@ export interface GeneratedCVEntry {
   superseded_by_id: number | null;
   edit_source: string | null;
   edit_instruction: string | null;
+  edit_target_excerpt: string | null;
 }
 
 export interface GeneratedCVListResponse {
@@ -228,6 +229,7 @@ export interface GeneratedCoverLetterEntry {
   superseded_by_id: number | null;
   edit_source: string | null;
   edit_instruction: string | null;
+  edit_target_excerpt: string | null;
 }
 
 export interface GeneratedCoverLetterListResponse {
@@ -253,6 +255,7 @@ export interface DocumentVersionItem {
   created_at: string;
   edit_source: string | null;
   edit_instruction: string | null;
+  edit_target_excerpt: string | null;
 }
 
 export interface DocumentVersionsResponse {
@@ -281,6 +284,44 @@ export interface CoverLetterComparisonResponse {
   from_version_id: number;
   to_version_id: number;
   diff: CoverLetterLineDiffEntry[];
+}
+
+export type CvEditTargetSection =
+  | 'summary'
+  | 'work_experience'
+  | 'education'
+  | 'projects'
+  | 'skill_categories'
+  | 'certifications';
+
+export interface CvEditTarget {
+  section: CvEditTargetSection;
+  index?: number | null;
+  subfield?: string | null;
+}
+
+export interface CvSelectionEditStreamRequest {
+  target: CvEditTarget;
+  instruction: string;
+}
+
+export interface CvSelectionEditApplyRequest {
+  target: CvEditTarget;
+  new_value: unknown;
+  instruction?: string | null;
+}
+
+export interface CoverLetterSelectionEditStreamRequest {
+  excerpt: string;
+  instruction: string;
+}
+
+export interface CoverLetterSelectionEditApplyRequest {
+  selection_start: number;
+  selection_end: number;
+  excerpt: string;
+  new_value: string;
+  instruction?: string | null;
 }
 
 // Settings

@@ -142,6 +142,11 @@
               {#if version.edit_instruction}
                 <p class="mt-1.5 text-[11px] text-muted-foreground italic">"{version.edit_instruction}"</p>
               {/if}
+              {#if version.edit_target_excerpt}
+                <p class="mt-1 text-[11px] text-muted-foreground/70 line-clamp-2">
+                  Rewrote: <span class="line-through">{version.edit_target_excerpt}</span>
+                </p>
+              {/if}
             </div>
             {#if !isHead}
               <div class="flex shrink-0 flex-col items-end gap-1.5">

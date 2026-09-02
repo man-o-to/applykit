@@ -9,12 +9,16 @@ import type {
     CoverLetterPdfRequest,
     CoverLetterRequest,
     CoverLetterResponse,
+    CoverLetterSelectionEditApplyRequest,
+    CoverLetterSelectionEditStreamRequest,
     CreateApplicationRequest,
     CreateProfileRequest,
     CvComparisonResponse,
     CvHistoryFilters,
     CvManualEditRequest,
     CvPdfRequest,
+    CvSelectionEditApplyRequest,
+    CvSelectionEditStreamRequest,
     DocumentVersionsResponse,
     FitAnalysisResponse,
     GenerateCvRequest,
@@ -271,6 +275,28 @@ export const compareCvVersions = (id: number, otherId: number) =>
 
 export const compareCoverLetterVersions = (id: number, otherId: number) =>
     request<CoverLetterComparisonResponse>(`/history/cover-letter/${id}/compare/${otherId}`);
+
+// --- Document versioning (AI selection rewrite) ---
+
+export const streamCvSelectionEdit = (id: number, data: CvSelectionEditStreamRequest): Promise<Response> =>
+    requestStream(`/history/cv/${id}/edit/selection/stream`, data);
+
+export const applyCvSelectionEdit = (id: number, data: CvSelectionEditApplyRequest) =>
+    request<GeneratedCVEntry>(`/history/cv/${id}/edit/selection/apply`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+    });
+
+export const streamCoverLetterSelectionEdit = (
+    id: number,
+    data: CoverLetterSelectionEditStreamRequest,
+): Promise<Response> => requestStream(`/history/cover-letter/${id}/edit/selection/stream`, data);
+
+export const applyCoverLetterSelectionEdit = (id: number, data: CoverLetterSelectionEditApplyRequest) =>
+    request<GeneratedCoverLetterEntry>(`/history/cover-letter/${id}/edit/selection/apply`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+    });
 
 export const getSettings = () =>
     request<SettingsResponse>('/settings');

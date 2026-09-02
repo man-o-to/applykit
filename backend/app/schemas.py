@@ -190,6 +190,7 @@ class GeneratedCVEntry(BaseModel):
     superseded_by_id: int | None = None
     edit_source: str | None = None
     edit_instruction: str | None = None
+    edit_target_excerpt: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -223,6 +224,7 @@ class GeneratedCoverLetterEntry(BaseModel):
     superseded_by_id: int | None = None
     edit_source: str | None = None
     edit_instruction: str | None = None
+    edit_target_excerpt: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -252,6 +254,7 @@ class DocumentVersionItem(BaseModel):
     created_at: datetime
     edit_source: str | None
     edit_instruction: str | None
+    edit_target_excerpt: str | None = None
 
 
 class DocumentVersionsResponse(BaseModel):
@@ -280,6 +283,50 @@ class CoverLetterComparisonResponse(BaseModel):
     from_version_id: int
     to_version_id: int
     diff: list[CoverLetterLineDiffEntry]
+
+
+# --- Document versioning (AI selection rewrite) ---
+
+
+class CvEditTarget(BaseModel):
+    """Addresses one chunk of a CV to rewrite - a scalar field (summary), or
+    a subfield of one entry in a list section (e.g. work_experience[2].bullets).
+    Reused unmodified by the future chat edit mode to describe its patches."""
+
+    section: Literal[
+        "summary",
+        "work_experience",
+        "education",
+        "projects",
+        "skill_categories",
+        "certifications",
+    ]
+    index: int | None = None
+    subfield: str | None = None
+
+
+class CvSelectionEditStreamRequest(BaseModel):
+    target: CvEditTarget
+    instruction: str
+
+
+class CvSelectionEditApplyRequest(BaseModel):
+    target: CvEditTarget
+    new_value: Any
+    instruction: str | None = None
+
+
+class CoverLetterSelectionEditStreamRequest(BaseModel):
+    excerpt: str
+    instruction: str
+
+
+class CoverLetterSelectionEditApplyRequest(BaseModel):
+    selection_start: int
+    selection_end: int
+    excerpt: str
+    new_value: str
+    instruction: str | None = None
 
 
 # --- Settings schemas ---

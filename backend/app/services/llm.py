@@ -40,6 +40,8 @@ OPERATION_FIT_ANALYSIS = "fit_analysis"
 OPERATION_JOB_PARSING = "job_parsing"
 OPERATION_SUMMARY_GENERATION = "summary_generation"
 OPERATION_BULLETS_GENERATION = "bullets_generation"
+OPERATION_CV_SELECTION_EDIT = "cv_selection_edit"
+OPERATION_COVER_LETTER_SELECTION_EDIT = "cover_letter_selection_edit"
 
 
 # ---------------------------------------------------------------------------

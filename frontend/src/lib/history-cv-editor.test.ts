@@ -30,9 +30,13 @@ describe('CV manual version editor', () => {
     }
   });
 
-  test('AI tools coupled to the live active profile are hidden when editing a historical snapshot', () => {
-    expect(editor).toContain('hideAiBulletTools={true}');
+  test('the summary AI tool - not yet retargeted - stays hidden when editing a historical snapshot', () => {
     expect(editor).toContain('hideAiTools={true}');
+  });
+
+  test('the experience tab AI bullet tool is retargeted to selection-rewrite, not hidden', () => {
+    expect(editor).toContain('onAiRewrite={aiRewrite}');
+    expect(editor).not.toContain('hideAiBulletTools={true}');
   });
 
   test('saving calls createCvVersion, not a status or delete call', () => {
