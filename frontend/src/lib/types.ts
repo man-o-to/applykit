@@ -82,6 +82,7 @@ export interface GenerateCvRequest {
   job_description?: string | null;
   application_id?: number | null;
   extra_context?: string | null;
+  fit_context?: string | null;
 }
 
 export interface ProfileResponse {

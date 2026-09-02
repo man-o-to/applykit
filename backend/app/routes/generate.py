@@ -249,6 +249,13 @@ def _build_cv_enhancement_prompt(
         parts.append(
             f"ADDITIONAL CONTEXT FROM CANDIDATE: {req.extra_context.strip()}"
         )
+    if req.fit_context and req.fit_context.strip():
+        parts.append(format_untrusted_input("fit_context", req.fit_context.strip()))
+        parts.append(
+            "Use fit_context only to guide emphasis - which existing bullets, "
+            "skills, or projects to foreground or reorder. Never add experience "
+            "or facts that are absent from the candidate profile."
+        )
     parts.extend(
         [
             "Use ORIGINAL_PROFILE as the schema and factual source for the JSON output.",
