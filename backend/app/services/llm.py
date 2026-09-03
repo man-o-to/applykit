@@ -42,6 +42,8 @@ OPERATION_SUMMARY_GENERATION = "summary_generation"
 OPERATION_BULLETS_GENERATION = "bullets_generation"
 OPERATION_CV_SELECTION_EDIT = "cv_selection_edit"
 OPERATION_COVER_LETTER_SELECTION_EDIT = "cover_letter_selection_edit"
+OPERATION_CV_CHAT_EDIT = "cv_chat_edit"
+OPERATION_COVER_LETTER_CHAT_EDIT = "cover_letter_chat_edit"
 
 
 # ---------------------------------------------------------------------------

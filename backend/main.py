@@ -15,6 +15,7 @@ from app.routes import (
     auth,
     generate,
     history,
+    history_chat,
     history_edit,
     import_cv,
     profile,
@@ -79,6 +80,7 @@ app.include_router(role_match_generate.router, prefix="/api")
 app.include_router(analyze.router, prefix="/api")
 app.include_router(history.router, prefix="/api")
 app.include_router(history_edit.router, prefix="/api")
+app.include_router(history_chat.router, prefix="/api")
 app.include_router(import_cv.router, prefix="/api")
 app.include_router(scrape.router, prefix="/api")
 app.include_router(settings.router, prefix="/api")

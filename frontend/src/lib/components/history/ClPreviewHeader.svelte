@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Button } from '$lib/components/ui/button';
   import ScoreRing from '$lib/components/ScoreRing.svelte';
-  import { Download, History, Pencil, X } from '@lucide/svelte';
+  import { Download, History, MessageCircle, Pencil, X } from '@lucide/svelte';
   import { formatDate } from '$lib/utils';
   import { goto } from '$app/navigation';
   import type { GeneratedCoverLetterEntry } from '$lib/types';
@@ -20,6 +20,8 @@
     onToggleEdit?: () => void;
     showVersionHistory?: boolean;
     onToggleVersionHistory?: () => void;
+    showChat?: boolean;
+    onToggleChat?: () => void;
   }
 
   let {
@@ -33,6 +35,8 @@
     onToggleEdit,
     showVersionHistory = false,
     onToggleVersionHistory,
+    showChat = false,
+    onToggleChat,
   }: Props = $props();
 
   const STATUS_PIPELINE = Object.entries(STATUS_CONFIG).map(([value, config]) => ({
@@ -123,6 +127,17 @@
         >
           <History class="w-3.5 h-3.5 mr-1.5" />
           Version history
+        </Button>
+      {/if}
+      {#if onToggleChat}
+        <Button
+          variant={showChat ? 'default' : 'outline'}
+          size="sm"
+          class="h-8 text-xs font-bold"
+          onclick={onToggleChat}
+        >
+          <MessageCircle class="w-3.5 h-3.5 mr-1.5" />
+          AI Chat
         </Button>
       {/if}
       {#if confirmingDelete}

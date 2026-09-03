@@ -21,6 +21,7 @@
 	import CvCard from '$lib/components/history/CvCard.svelte';
 	import CvVersionEditor from '$lib/components/history/CvVersionEditor.svelte';
 	import DocumentVersionPanel from '$lib/components/history/DocumentVersionPanel.svelte';
+	import DocumentChatSidebar from '$lib/components/history/DocumentChatSidebar.svelte';
 	import ClCard from '$lib/components/history/ClCard.svelte';
 	import ClPreviewHeader from '$lib/components/history/ClPreviewHeader.svelte';
 	import CoverLetterVersionEditor from '$lib/components/history/CoverLetterVersionEditor.svelte';
@@ -30,7 +31,7 @@
 	import type { GeneratedCVEntry, GeneratedCoverLetterEntry, ProfileData } from '$lib/types';
 	import { errorMessage, formatDate, formatDateShort, getScoreBarColor, getScoreColor } from '$lib/utils';
 	import { toastState } from '$lib/toast.svelte';
-	import { Clock, Download, FileText, History, Pencil, Sparkles } from '@lucide/svelte';
+	import { Clock, Download, FileText, History, MessageCircle, Pencil, Sparkles } from '@lucide/svelte';
 
 	type Tab = 'cv' | 'cover-letter';
 	let tab: Tab = $state('cv');
@@ -47,10 +48,12 @@
 	let downloading = $state(false);
 	let editingCv = $state(false);
 	let showCvVersionHistory = $state(false);
+	let showCvChat = $state(false);
 	let selectedCl: GeneratedCoverLetterEntry | null = $state(null);
 	let previewTab = $state<'letter' | 'analysis'>('letter');
 	let editingCl = $state(false);
 	let showClVersionHistory = $state(false);
+	let showClChat = $state(false);
 
 	let clSearch = $state('');
 	let clMatchFilter = $state<'all' | 'high' | 'medium' | 'low'>('all');
@@ -371,7 +374,8 @@
           </div>
 
           {#if selectedCv}
-            <div class="border rounded-lg overflow-hidden bg-white dark:bg-zinc-950/40 print:bg-white shadow-sm transition-colors">
+            <div class="flex gap-3 items-start">
+            <div class="flex-1 min-w-0 border rounded-lg overflow-hidden bg-white dark:bg-zinc-950/40 print:bg-white shadow-sm transition-colors">
               <div class="flex items-center justify-between gap-2 p-3 border-b bg-muted/30">
                 <span class="text-sm text-muted-foreground">{formatDate(selectedCv.created_at)}</span>
                 <div class="flex items-center gap-2">
@@ -393,6 +397,13 @@
                     onclick={() => showCvVersionHistory = !showCvVersionHistory}
                   >
                     <History class="w-4 h-4 mr-1" /> Version history
+                  </Button>
+                  <Button
+                    variant={showCvChat ? 'default' : 'outline'}
+                    size="sm"
+                    onclick={() => showCvChat = !showCvChat}
+                  >
+                    <MessageCircle class="w-4 h-4 mr-1" /> AI Chat
                   </Button>
                   {#if confirmDeleteCvId === selectedCv.id}
                     <div class="flex items-center gap-1.5">
@@ -434,6 +445,17 @@
                   <p class="p-8 text-sm text-destructive">Could not parse CV snapshot.</p>
                 {/if}
               </div>
+            </div>
+            {#if showCvChat}
+              <div class="w-80 shrink-0 h-[70vh] border rounded-lg overflow-hidden shadow-sm">
+                <DocumentChatSidebar
+                  documentType="cv"
+                  entryId={selectedCv.id}
+                  onApplied={(updated) => handleCvVersionSaved(updated as GeneratedCVEntry)}
+                  onClose={() => showCvChat = false}
+                />
+              </div>
+            {/if}
             </div>
           {:else}
             <EmptyState
@@ -525,7 +547,8 @@
           </div>
 
           <!-- RIGHT: Preview panel -->
-          <div class="flex flex-col overflow-hidden">
+          <div class="flex overflow-hidden">
+          <div class="flex flex-col overflow-hidden flex-1 min-w-0">
             {#if !selectedCl}
               <!-- Empty state -->
               <div class="flex-1 flex flex-col items-center justify-center gap-2 text-muted-foreground">
@@ -545,6 +568,8 @@
                 onToggleEdit={() => editingCl = !editingCl}
                 showVersionHistory={showClVersionHistory}
                 onToggleVersionHistory={() => showClVersionHistory = !showClVersionHistory}
+                showChat={showClChat}
+                onToggleChat={() => showClChat = !showClChat}
               />
 
               {#if showClVersionHistory}
@@ -594,6 +619,17 @@
                 {/if}
               </div>
             {/if}
+          </div>
+          {#if showClChat && selectedCl}
+            <div class="w-80 shrink-0 border-l border-border">
+              <DocumentChatSidebar
+                documentType="cover-letter"
+                entryId={selectedCl.id}
+                onApplied={(updated) => handleClVersionSaved(updated as GeneratedCoverLetterEntry)}
+                onClose={() => showClChat = false}
+              />
+            </div>
+          {/if}
           </div>
 
         </div>

@@ -324,6 +324,47 @@ export interface CoverLetterSelectionEditApplyRequest {
   instruction?: string | null;
 }
 
+// Document chat (conversational AI edit mode)
+export interface ChatSessionResponse {
+  id: number;
+  status: string;
+  turn_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CvChatPatch {
+  target: CvEditTarget;
+  new_value: unknown;
+}
+
+export interface CoverLetterChatPatch {
+  new_value: string;
+}
+
+export interface ChatMessageItem {
+  id: number;
+  role: 'user' | 'assistant';
+  content: string;
+  created_at: string;
+  proposed_patch: CvChatPatch | CoverLetterChatPatch | null;
+  patch_status: 'pending' | 'applied' | 'discarded' | null;
+  resulting_version_id: number | null;
+}
+
+export interface ChatMessagesResponse {
+  items: ChatMessageItem[];
+}
+
+export interface ChatMessageRequest {
+  content: string;
+}
+
+export interface ChatPatchActionResponse {
+  status: 'applied' | 'discarded';
+  message_id: number;
+}
+
 // Settings
 export interface SettingsResponse {
   model: string | null;
