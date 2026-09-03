@@ -3,6 +3,10 @@ import type {
     ApplicationEntry,
     ApplicationFilters,
     ApplicationListResponse,
+    ChatMessageRequest,
+    ChatMessagesResponse,
+    ChatPatchActionResponse,
+    ChatSessionResponse,
     CoverLetterComparisonResponse,
     CoverLetterHistoryFilters,
     CoverLetterManualEditRequest,
@@ -297,6 +301,59 @@ export const applyCoverLetterSelectionEdit = (id: number, data: CoverLetterSelec
         method: 'POST',
         body: JSON.stringify(data),
     });
+
+// --- Document chat (conversational AI edit mode) ---
+
+export const createCvChatSession = (cvId: number) =>
+    request<ChatSessionResponse>(`/history/cv/${cvId}/chat/sessions`, { method: 'POST' });
+
+export const getCvChatSession = (sessionId: number) =>
+    request<ChatSessionResponse>(`/history/cv/chat/sessions/${sessionId}`);
+
+export const getCvChatMessages = (sessionId: number) =>
+    request<ChatMessagesResponse>(`/history/cv/chat/sessions/${sessionId}/messages`);
+
+export const streamCvChatTurn = (sessionId: number, data: ChatMessageRequest): Promise<Response> =>
+    requestStream(`/history/cv/chat/sessions/${sessionId}/messages/stream`, data);
+
+export const applyCvChatPatch = (sessionId: number, messageId: number) =>
+    request<GeneratedCVEntry>(
+        `/history/cv/chat/sessions/${sessionId}/messages/${messageId}/apply`,
+        { method: 'POST' },
+    );
+
+export const discardCvChatPatch = (sessionId: number, messageId: number) =>
+    request<ChatPatchActionResponse>(
+        `/history/cv/chat/sessions/${sessionId}/messages/${messageId}/discard`,
+        { method: 'POST' },
+    );
+
+export const createCoverLetterChatSession = (clId: number) =>
+    request<ChatSessionResponse>(`/history/cover-letter/${clId}/chat/sessions`, { method: 'POST' });
+
+export const getCoverLetterChatSession = (sessionId: number) =>
+    request<ChatSessionResponse>(`/history/cover-letter/chat/sessions/${sessionId}`);
+
+export const getCoverLetterChatMessages = (sessionId: number) =>
+    request<ChatMessagesResponse>(`/history/cover-letter/chat/sessions/${sessionId}/messages`);
+
+export const streamCoverLetterChatTurn = (
+    sessionId: number,
+    data: ChatMessageRequest,
+): Promise<Response> =>
+    requestStream(`/history/cover-letter/chat/sessions/${sessionId}/messages/stream`, data);
+
+export const applyCoverLetterChatPatch = (sessionId: number, messageId: number) =>
+    request<GeneratedCoverLetterEntry>(
+        `/history/cover-letter/chat/sessions/${sessionId}/messages/${messageId}/apply`,
+        { method: 'POST' },
+    );
+
+export const discardCoverLetterChatPatch = (sessionId: number, messageId: number) =>
+    request<ChatPatchActionResponse>(
+        `/history/cover-letter/chat/sessions/${sessionId}/messages/${messageId}/discard`,
+        { method: 'POST' },
+    );
 
 export const getSettings = () =>
     request<SettingsResponse>('/settings');

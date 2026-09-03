@@ -72,6 +72,9 @@ class GeneratedCV(Base):
     edit_source = Column(String, nullable=True)  # manual | ai_selection | ai_chat | restore
     edit_instruction = Column(Text, nullable=True)
     edit_target_excerpt = Column(Text, nullable=True)
+    chat_session_id = Column(
+        Integer, ForeignKey("cv_chat_session.id", ondelete="SET NULL"), nullable=True
+    )
 
 
 class GeneratedCoverLetter(Base):
@@ -111,6 +114,93 @@ class GeneratedCoverLetter(Base):
     edit_source = Column(String, nullable=True)
     edit_instruction = Column(Text, nullable=True)
     edit_target_excerpt = Column(Text, nullable=True)
+    chat_session_id = Column(
+        Integer,
+        ForeignKey("cover_letter_chat_session.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
+
+class CvChatSession(Base):
+    __tablename__ = "cv_chat_session"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    cv_root_id = Column(
+        Integer, ForeignKey("generated_cv.id", ondelete="SET NULL"), nullable=True
+    )
+    current_cv_id = Column(
+        Integer, ForeignKey("generated_cv.id", ondelete="SET NULL"), nullable=True
+    )
+    status = Column(String(16), nullable=False, default="open")
+    turn_count = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
+
+
+class CvChatMessage(Base):
+    __tablename__ = "cv_chat_message"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    session_id = Column(
+        Integer, ForeignKey("cv_chat_session.id", ondelete="CASCADE"), nullable=False
+    )
+    role = Column(String(16), nullable=False)  # user | assistant
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
+    proposed_patch_json = Column(Text, nullable=True)
+    patch_status = Column(String(16), nullable=True)  # pending | applied | discarded
+    resulting_cv_id = Column(
+        Integer, ForeignKey("generated_cv.id", ondelete="SET NULL"), nullable=True
+    )
+
+
+class CoverLetterChatSession(Base):
+    __tablename__ = "cover_letter_chat_session"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    cl_root_id = Column(
+        Integer,
+        ForeignKey("generated_cover_letter.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    current_cl_id = Column(
+        Integer,
+        ForeignKey("generated_cover_letter.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    status = Column(String(16), nullable=False, default="open")
+    turn_count = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
+
+
+class CoverLetterChatMessage(Base):
+    __tablename__ = "cover_letter_chat_message"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    session_id = Column(
+        Integer,
+        ForeignKey("cover_letter_chat_session.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    role = Column(String(16), nullable=False)  # user | assistant
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
+    proposed_patch_json = Column(Text, nullable=True)
+    patch_status = Column(String(16), nullable=True)  # pending | applied | discarded
+    resulting_cl_id = Column(
+        Integer,
+        ForeignKey("generated_cover_letter.id", ondelete="SET NULL"),
+        nullable=True,
+    )
 
 
 class Application(Base):

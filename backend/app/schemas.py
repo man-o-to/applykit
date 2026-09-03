@@ -329,6 +329,40 @@ class CoverLetterSelectionEditApplyRequest(BaseModel):
     instruction: str | None = None
 
 
+# --- Document Chat (conversational AI edit mode) ---
+
+
+class ChatSessionResponse(BaseModel):
+    id: int
+    status: str
+    turn_count: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class ChatMessageItem(BaseModel):
+    id: int
+    role: str
+    content: str
+    created_at: datetime
+    proposed_patch: dict[str, Any] | None = None
+    patch_status: str | None = None
+    resulting_version_id: int | None = None
+
+
+class ChatMessagesResponse(BaseModel):
+    items: list[ChatMessageItem]
+
+
+class ChatMessageRequest(BaseModel):
+    content: str
+
+
+class ChatPatchActionResponse(BaseModel):
+    status: Literal["applied", "discarded"]
+    message_id: int
+
+
 # --- Settings schemas ---
 
 
